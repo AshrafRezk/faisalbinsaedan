@@ -10,10 +10,12 @@ import OurFieldsSection from '../components/home/OurFieldsSection'
 import AboutProjectsSection from '../components/home/AboutProjectsSection'
 import RegisterInterestModal from '../components/home/RegisterInterestModal'
 import MorphicBackground from '../components/home/MorphicBackground'
+import { HomePageContentProvider, useHomePageContent } from '../contexts/HomePageContentContext'
 
-export default function Home() {
+function HomePageContent() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
+  const { content, text } = useHomePageContent()
 
   useEffect(() => {
     // Update HTML lang and dir attributes when language changes
@@ -40,7 +42,7 @@ export default function Home() {
           >
             <Box
               component="img"
-              src="/Capital-Market-Authority-01.png"
+              src={content.cma.imageUrl}
               alt="Capital Market Authority"
               sx={{
                 display: 'block',
@@ -53,7 +55,7 @@ export default function Home() {
               }}
             />
             <Typography variant="body1" sx={{ maxWidth: '800px', mx: 'auto', color: 'text.secondary', lineHeight: 1.8 }}>
-              {t('home.cmaDescription')}
+              {text(content.cma.description)}
             </Typography>
             <Typography
               variant="body2"
@@ -66,16 +68,16 @@ export default function Home() {
                 fontWeight: 500,
               }}
             >
-              {t('home.cmaCollaborationTeaser')}
+              {text(content.cma.teaser)}
             </Typography>
             <Button
               component={Link}
-              to="/collaboration-coming-soon"
+              to={content.cma.ctaLink}
               variant="outlined"
               size="medium"
               sx={{ mt: 2.5, textTransform: 'none', fontWeight: 600 }}
             >
-              {t('home.cmaCollaborationCta')}
+              {text(content.cma.ctaLabel)}
             </Button>
           </motion.div>
         </Container>
@@ -90,10 +92,10 @@ export default function Home() {
             viewport={{ once: true }}
           >
             <Typography variant="h3" fontWeight="bold" gutterBottom>
-              {t('home.ctaTitle')}
+              {text(content.cta.title)}
             </Typography>
             <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 4, maxWidth: '42rem', mx: 'auto' }}>
-              {t('home.ctaDescription')}
+              {text(content.cta.description)}
             </Typography>
             <Button
               variant="outlined"
@@ -116,7 +118,7 @@ export default function Home() {
                 },
               }}
             >
-              {t('home.registerInterest')}
+              {text(content.cta.buttonLabel)}
             </Button>
           </motion.div>
         </Container>
@@ -128,6 +130,14 @@ export default function Home() {
         onClose={() => setIsRegisterModalOpen(false)}
       />
     </Box>
+  )
+}
+
+export default function Home() {
+  return (
+    <HomePageContentProvider>
+      <HomePageContent />
+    </HomePageContentProvider>
   )
 }
 

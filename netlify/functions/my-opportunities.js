@@ -240,7 +240,7 @@ export const handler = async (event) => {
         bua: u.BUA__c ?? undefined,
         floor: u.Floor__c ?? undefined,
         finishing: u.Finishing__c ?? undefined,
-        usageType: c.Unit_Usage_Type__c || u.Usage_Type__c ?? undefined,
+        usageType: c.Unit_Usage_Type__c ?? u.Usage_Type__c ?? undefined,
         view: u.View__c ?? undefined,
         eligibleForSubsidies: !!u.Eligible_for_Subsidies__c,
         subsidies: u.Subsidies__c ?? undefined,

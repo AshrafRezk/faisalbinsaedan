@@ -1,27 +1,13 @@
 import { Box, Container, Typography, Grid } from '@mui/material'
 import { motion } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useHomePageContent } from '../../contexts/HomePageContentContext'
 
-const FIELDS = [
-  {
-    id: 'residential',
-    image: '/projects/malfa/hero.jpg',
-    titleKey: 'home.fields.residential.title',
-    descKey: 'home.fields.residential.description',
-    link: '/search?view=projects',
-  },
-  {
-    id: 'commercial',
-    image: 'https://faisal-binsaedan.com/wp-content/uploads/2024/07/manar-1.webp',
-    titleKey: 'home.fields.commercial.title',
-    descKey: 'home.fields.commercial.description',
-    link: '/search?view=projects',
-  },
-] as const
+const IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800'
 
 export default function OurFieldsSection() {
-  const { t } = useTranslation()
+  const { content, text } = useHomePageContent()
 
   return (
     <Box
@@ -42,12 +28,12 @@ export default function OurFieldsSection() {
             gutterBottom
             sx={{ mb: 6 }}
           >
-            {t('home.fields.title')}
+            {text(content.ourFields.title)}
           </Typography>
         </motion.div>
 
         <Grid container spacing={4}>
-          {FIELDS.map((field, index) => (
+          {content.ourFields.cards.map((field, index) => (
             <Grid size={{ xs: 12, md: 6 }} key={field.id}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -73,8 +59,8 @@ export default function OurFieldsSection() {
                   >
                     <Box
                       component="img"
-                      src={field.image}
-                      alt={t(field.titleKey)}
+                      src={field.imageUrl}
+                      alt={text(field.title)}
                       sx={{
                         width: '100%',
                         height: '100%',
@@ -85,20 +71,19 @@ export default function OurFieldsSection() {
                         },
                       }}
                       onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                        e.currentTarget.src =
-                          'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800'
+                        e.currentTarget.src = IMAGE_FALLBACK
                       }}
                     />
                   </Box>
                   <Typography variant="h4" fontWeight="500" color="primary.main" gutterBottom sx={{ mb: 2 }}>
-                    {t(field.titleKey)}
+                    {text(field.title)}
                   </Typography>
                   <Typography
                     variant="body1"
                     color="text.secondary"
                     sx={{ mb: 4, flexGrow: 1, lineHeight: 1.7, fontSize: '0.95rem' }}
                   >
-                    {t(field.descKey)}
+                    {text(field.description)}
                   </Typography>
                   <Box
                     component={Link}
@@ -117,7 +102,7 @@ export default function OurFieldsSection() {
                       },
                     }}
                   >
-                    {t('home.fields.readMore')}
+                    {text(content.ourFields.readMoreLabel)}
                   </Box>
                 </Box>
               </motion.div>

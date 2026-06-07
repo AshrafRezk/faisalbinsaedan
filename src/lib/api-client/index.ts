@@ -6,6 +6,11 @@ import {
 } from '../projectMedia'
 import type { ProjectModelFile } from '../types'
 import { salesforceQuery, salesforceFetchUnits, salesforceFetchNewsArticles, salesforceFetchNewsArticleDetail, SalesforceUnitDTO } from '../salesforce/client'
+import {
+  buildHomePageContent,
+  HOME_PAGE_FALLBACKS,
+  type HomePageContent,
+} from '../home-page-content'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -146,6 +151,15 @@ interface PWAContent {
   Location__c: string
   Meta_keywords__c?: string
   Aspect_Ratio__c?: string
+  Title_English__c?: string
+  Title_Arabic__c?: string
+  Subtitle_English__c?: string
+  Subtitle_Arabic__c?: string
+  Body_English__c?: string
+  Body_Arabic__c?: string
+  Link_URL__c?: string
+  Value_Number__c?: number
+  Suffix__c?: string
 }
 
 interface SalesforceProjectRecord {
@@ -662,184 +676,96 @@ export async function getProject(id: string) {
   }
 }
 
-export async function getFeaturedVideo() {
-  console.log('[Hero Video] Starting to fetch featured video via Netlify Function...')
+const HOME_PAGE_PWA_FIELDS = [
+  'Id',
+  'Name',
+  'Content_URL__c',
+  'Type__c',
+  'Location__c',
+  'Meta_keywords__c',
+  'Aspect_Ratio__c',
+  'Title_English__c',
+  'Title_Arabic__c',
+  'Subtitle_English__c',
+  'Subtitle_Arabic__c',
+  'Body_English__c',
+  'Body_Arabic__c',
+  'Link_URL__c',
+  'Value_Number__c',
+  'Suffix__c',
+].join(', ')
+
+const HOME_PAGE_PWA_SOQL = `SELECT ${HOME_PAGE_PWA_FIELDS}
+  FROM PWA_Content__c 
+  WHERE Location__c LIKE 'Homepage%' 
+  ORDER BY CreatedDate DESC`
+
+/** Used until custom plain-text fields are added on PWA_Content__c */
+const HOME_PAGE_PWA_SOQL_LEGACY = `SELECT Id, Name, Content_URL__c, Type__c, Location__c, Meta_keywords__c, Aspect_Ratio__c
+  FROM PWA_Content__c 
+  WHERE Location__c LIKE 'Homepage%' 
+  ORDER BY CreatedDate DESC`
+
+let homePageContentCache: { data: HomePageContent; fetchedAt: number } | null = null
+const HOME_PAGE_CONTENT_CACHE_MS = 5 * 60 * 1000
+
+async function queryHomePagePwaRecords(): Promise<PWAContent[]> {
+  try {
+    const result = await salesforceQuery<PWAContent>(HOME_PAGE_PWA_SOQL)
+    return result.records || []
+  } catch (extendedFieldError) {
+    console.warn(
+      '[HomePageContent] Extended fields query failed, retrying with legacy fields:',
+      extendedFieldError
+    )
+    const legacy = await salesforceQuery<PWAContent>(HOME_PAGE_PWA_SOQL_LEGACY)
+    return legacy.records || []
+  }
+}
+
+export async function getHomePageContent(): Promise<HomePageContent> {
+  if (
+    homePageContentCache &&
+    Date.now() - homePageContentCache.fetchedAt < HOME_PAGE_CONTENT_CACHE_MS
+  ) {
+    return homePageContentCache.data
+  }
 
   try {
-    // Query Salesforce for PWA Content with Location = 'Homepage Hero Section' and Type = 'Video'
-    // This now uses Netlify Functions, so secrets are kept server-side
-    const soql = `SELECT Id, Name, Content_URL__c, Type__c, Location__c, Meta_keywords__c, Aspect_Ratio__c 
-                  FROM PWA_Content__c 
-                  WHERE Location__c = 'Homepage Hero Section' 
-                  AND Type__c = 'Video' 
-                  ORDER BY CreatedDate DESC 
-                  LIMIT 1`
-
-    console.log('[Hero Video] Querying Salesforce for hero video record via Netlify Function...')
-    const result = await salesforceQuery<PWAContent>(soql)
-
-    if (result.records && result.records.length > 0) {
-      const content = result.records[0]
-      console.log('[Hero Video] ✅ Found Salesforce record:', {
-        id: content.Id,
-        name: content.Name,
-        type: content.Type__c,
-        location: content.Location__c,
-        contentUrl: content.Content_URL__c,
-      })
-
-      // Extract video URL - handle Instagram, YouTube, Google Drive, and direct video URLs
-      let videoUrl = (content.Content_URL__c || '').trim()
-
-      if (!videoUrl) {
-        console.warn('[Hero Video] ⚠️ No video URL in Salesforce record')
-        // No video URL in record, fall through to API endpoint
-        throw new Error('No video URL in Salesforce record')
-      }
-
-      console.log('[Hero Video] Processing video URL:', videoUrl)
-
-      // Parse aspect ratio from Salesforce field (Priority 1)
-      let aspectRatio: number | undefined = undefined
-      if (content.Aspect_Ratio__c) {
-        const ratioMatch = content.Aspect_Ratio__c.match(/(\d+):(\d+)/)
-        if (ratioMatch) {
-          aspectRatio = parseFloat(ratioMatch[1]) / parseFloat(ratioMatch[2])
-          console.log('[Hero Video] ✅ Parsed aspect ratio from Salesforce:', {
-            raw: content.Aspect_Ratio__c,
-            decimal: aspectRatio,
-          })
-        } else {
-          console.warn('[Hero Video] ⚠️ Invalid aspect ratio format:', content.Aspect_Ratio__c)
-        }
-      }
-
-      // Handle Instagram URLs (reels and posts)
-      // Instagram uses official embed script, so we keep the original URL
-      // The HeroSection component will handle the Instagram embed differently
-      if (videoUrl.includes('instagram.com/reel/') || videoUrl.includes('instagram.com/p/')) {
-        // Clean up the URL - remove utm_source and other query params, keep the base URL
-        const cleanUrl = videoUrl.split('?')[0]
-        videoUrl = cleanUrl
-        console.log('[Hero Video] ✅ Prepared Instagram URL for official embed:', videoUrl)
-      }
-      // Handle Google Drive URLs
-      else if (videoUrl.includes('drive.google.com')) {
-        // Extract file ID from various Google Drive URL formats
-        // Format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-        // Format: https://drive.google.com/file/d/FILE_ID/view
-        // Format: https://drive.google.com/open?id=FILE_ID
-        // Format: https://drive.google.com/uc?id=FILE_ID
-        let fileId = ''
-
-        // Primary pattern: /file/d/FILE_ID/ (works for /view, /preview, etc.)
-        const fileIdMatch = videoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
-        // Fallback patterns
-        const openIdMatch = videoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-        const ucIdMatch = videoUrl.match(/\/uc\?id=([a-zA-Z0-9_-]+)/)
-
-        fileId = fileIdMatch?.[1] || openIdMatch?.[1] || ucIdMatch?.[1] || ''
-
-        if (fileId) {
-          // Convert to embeddable preview URL with autoplay
-          // Google Drive preview supports autoplay via URL parameter
-          videoUrl = `https://drive.google.com/file/d/${fileId}/preview?autoplay=1&mute=1`
-          console.log('[Hero Video] ✅ Converted Google Drive URL to embed with autoplay:', {
-            originalUrl: videoUrl,
-            fileId: fileId,
-            embedUrl: videoUrl,
-          })
-        } else {
-          console.warn('[Hero Video] ⚠️ Could not extract Google Drive file ID from URL:', videoUrl)
-        }
-      }
-      // Handle YouTube URLs
-      else if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-        let videoId = ''
-
-        if (videoUrl.includes('youtube.com/watch')) {
-          // Format: https://www.youtube.com/watch?v=VIDEO_ID
-          videoId = videoUrl.match(/[?&]v=([^&]+)/)?.[1] || ''
-          console.log('[Hero Video] Extracted YouTube video ID from watch URL:', videoId)
-        } else if (videoUrl.includes('youtu.be/')) {
-          // Format: https://youtu.be/VIDEO_ID?si=...
-          const match = videoUrl.match(/youtu\.be\/([^/?&]+)/)
-          videoId = match?.[1] || ''
-          console.log('[Hero Video] Extracted YouTube video ID from short URL:', videoId, 'from:', videoUrl)
-        } else if (videoUrl.includes('youtube.com/embed/')) {
-          // Format: https://www.youtube.com/embed/VIDEO_ID
-          videoId = videoUrl.match(/embed\/([^?&]+)/)?.[1] || ''
-          console.log('[Hero Video] Extracted YouTube video ID from embed URL:', videoId)
-        }
-
-        if (videoId) {
-          // Build YouTube embed URL with autoplay and mute
-          const params = new URLSearchParams({
-            autoplay: '1',
-            mute: '1',
-            loop: '1',
-            playlist: videoId, // Required for looping
-            controls: '0',
-            showinfo: '0',
-            playsinline: '1',
-            enablejsapi: '1',
-            rel: '0',
-            modestbranding: '1',
-          })
-          videoUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`
-          console.log('[Hero Video] ✅ Built YouTube embed URL:', videoUrl)
-        } else {
-          console.warn('[Hero Video] ⚠️ Could not extract YouTube video ID from URL:', videoUrl)
-        }
-      }
-
-      // Try to extract thumbnail/cover image
-      let coverImageUrl = ''
-      if (videoUrl.includes('instagram.com')) {
-        // Instagram embed doesn't provide direct thumbnail, use a default gradient
-        coverImageUrl = ''
-        console.log('[Hero Video] Using default gradient for Instagram cover image')
-      } else if (videoUrl.includes('youtube.com/embed/')) {
-        // Extract YouTube video ID for thumbnail
-        const thumbVideoId = videoUrl.match(/embed\/([^?]+)/)?.[1]
-        if (thumbVideoId) {
-          coverImageUrl = `https://img.youtube.com/vi/${thumbVideoId}/maxresdefault.jpg`
-          console.log('[Hero Video] Generated YouTube thumbnail URL:', coverImageUrl)
-        }
-      } else if (videoUrl.includes('drive.google.com')) {
-        // Google Drive doesn't provide direct thumbnail, use a default gradient
-        coverImageUrl = ''
-        console.log('[Hero Video] Using default gradient for Google Drive cover image')
-      }
-
-      const videoData = {
-        projectId: '',
-        projectName: content.Name,
-        projectNameAr: content.Name,
-        videoUrl: videoUrl,
-        coverImageUrl: coverImageUrl,
-        aspectRatio: aspectRatio,
-      }
-
-      console.log('[Hero Video] ✅ Returning video data:', videoData)
-
-      return {
-        success: true,
-        data: videoData,
-      } as ApiResponse<{
-        projectId: string
-        projectName: string
-        projectNameAr: string
-        videoUrl: string
-        coverImageUrl: string
-        aspectRatio?: number
-      }>
-    } else {
-      console.warn('[Hero Video] ⚠️ No records found in Salesforce query result')
-    }
-
+    const records = await queryHomePagePwaRecords()
+    const data = buildHomePageContent(records as PWAContent[])
+    homePageContentCache = { data, fetchedAt: Date.now() }
+    return data
   } catch (error) {
-    console.error('[Hero Video] ❌ ERROR fetching from Salesforce:', error)
+    console.error('[HomePageContent] Failed to load from Salesforce:', error)
+    return HOME_PAGE_FALLBACKS
+  }
+}
+
+export async function getFeaturedVideo() {
+  try {
+    const content = await getHomePageContent()
+    const video = content.hero.video
+    return {
+      success: true,
+      data: video ?? {
+        projectId: '',
+        projectName: '',
+        projectNameAr: '',
+        videoUrl: '',
+        coverImageUrl: '',
+        aspectRatio: undefined,
+      },
+    } as ApiResponse<{
+      projectId: string
+      projectName: string
+      projectNameAr: string
+      videoUrl: string
+      coverImageUrl: string
+      aspectRatio?: number
+    }>
+  } catch (error) {
+    console.error('[Hero Video] ERROR:', error)
     return {
       success: true,
       data: {

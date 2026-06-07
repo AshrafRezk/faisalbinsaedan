@@ -3,6 +3,7 @@ import { Box, Container, Typography, Card, Chip, Grid, Skeleton } from '@mui/mat
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useHomePageContent } from '../../contexts/HomePageContentContext'
 import { MapPin } from 'lucide-react'
 import { getProjects } from '../../lib/api-client'
 import type { Project } from '../../lib/types'
@@ -19,6 +20,7 @@ const MAP_HEIGHT = { xs: 360, sm: 420, md: 560 }
 
 export default function AboutProjectsSection() {
   const { t, i18n } = useTranslation()
+  const { content, text } = useHomePageContent()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<ProjectWithAvailability[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -200,7 +202,7 @@ export default function AboutProjectsSection() {
               whiteSpace: 'pre-line',
             }}
           >
-            {isRtl ? 'عن مشاريعنا' : 'About\nOur Projects'}
+            {text(content.aboutProjects.title)}
           </Typography>
         </motion.div>
 

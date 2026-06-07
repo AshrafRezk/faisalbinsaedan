@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getHomePageStats } from '../../lib/api-client'
+import { useHomePageContent } from '../../contexts/HomePageContentContext'
 
 function Counter({ value, suffix = '', duration = 2 }: { value: number; suffix?: string; duration?: number }) {
   const { i18n } = useTranslation()
@@ -67,6 +68,7 @@ type StatItem = {
 
 export default function StatsSection() {
   const { t } = useTranslation()
+  const { content, text } = useHomePageContent()
   const [unitsCount, setUnitsCount] = useState(0)
   const [projectsCount, setProjectsCount] = useState(0)
   const [isLoadingCounts, setIsLoadingCounts] = useState(true)
@@ -109,8 +111,12 @@ export default function StatsSection() {
       href: '/search?view=projects',
       loading: isLoadingCounts,
     },
-    { value: 32, label: t('home.stats.drivethrough', 'Drive Through'), suffix: '+' },
-    { value: 11, label: t('home.stats.plaza', 'Plaza'), suffix: '+' },
+    ...content.stats.staticStats.map((stat) => ({
+      value: stat.value,
+      label: text(stat.label),
+      suffix: stat.suffix,
+      href: stat.href,
+    })),
   ]
 
   return (
@@ -134,7 +140,7 @@ export default function StatsSection() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {t('home.statsTitle', 'Strong foundation and advanced innovations')}
+                {text(content.stats.title)}
               </Typography>
             </motion.div>
           </Grid>
@@ -155,10 +161,7 @@ export default function StatsSection() {
                   maxWidth: '400px',
                 }}
               >
-                {t(
-                  'home.statsDesc',
-                  'At Faisal Bin Saedan, we strive to implement modern architectural styles and inspiring innovations with a strong foundation.'
-                )}
+                {text(content.stats.description)}
               </Typography>
             </motion.div>
           </Grid>

@@ -1,9 +1,12 @@
 import { Box, Container, Typography, Grid } from '@mui/material'
 import { motion } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
+import { useHomePageContent } from '../../contexts/HomePageContentContext'
+
+const IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800'
 
 export default function InspiringSpacesSection() {
-  const { t } = useTranslation()
+  const { content, text } = useHomePageContent()
 
   return (
     <Box id="inspiring-spaces" sx={{ py: { xs: 8, md: 12 }, overflow: 'hidden' }}>
@@ -29,7 +32,7 @@ export default function InspiringSpacesSection() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {t('home.inspiringSpacesTitle', 'Inspiring Spaces, Building Futures')}
+                {text(content.inspiringSpaces.title)}
               </Typography>
               <Typography
                 variant="body1"
@@ -40,7 +43,7 @@ export default function InspiringSpacesSection() {
                   maxWidth: '400px',
                 }}
               >
-                {t('home.inspiringSpacesDesc', 'Through structure, discipline, and strategic foresight, we transform potential into enduring, measurable value, supporting national progress and sustainable growth.')}
+                {text(content.inspiringSpaces.description)}
               </Typography>
             </motion.div>
           </Grid>
@@ -72,12 +75,15 @@ export default function InspiringSpacesSection() {
                 {/* Fallback image placeholder matching the mockup style */}
                 <Box
                   component="img"
-                  src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop"
-                  alt="Modern Building"
+                  src={content.inspiringSpaces.imageUrl}
+                  alt={text(content.inspiringSpaces.title)}
                   sx={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
+                  }}
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    e.currentTarget.src = IMAGE_FALLBACK
                   }}
                 />
               </Box>

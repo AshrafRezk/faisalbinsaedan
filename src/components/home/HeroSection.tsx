@@ -3,7 +3,9 @@ import { Box, Container, Typography, Grid } from '@mui/material'
 import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getFeaturedVideo, detectVideoAspectRatio } from '../../lib/api-client'
+import { detectVideoAspectRatio } from '../../lib/api-client'
+import { useHomePageContent } from '../../contexts/HomePageContentContext'
+import type { HeroVideoContent } from '../../lib/home-page-content'
 import VideoCover from './VideoCover'
 
 // Type declaration for Instagram embed API
@@ -17,70 +19,63 @@ declare global {
   }
 }
 
-interface FeaturedVideo {
-  projectId: string
-  projectName: string
-  projectNameAr: string
-  videoUrl: string
-  coverImageUrl: string
-  aspectRatio?: number
-}
-
 export default function HeroSection() {
   const { t } = useTranslation()
-  const [featuredVideo, setFeaturedVideo] = useState<FeaturedVideo | null>(null)
+  const { content, isLoading: isContentLoading, text } = useHomePageContent()
+  const [featuredVideo, setFeaturedVideo] = useState<HeroVideoContent | null>(null)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const isLoading = isContentLoading
   const [instagramEmbedFailed, setInstagramEmbedFailed] = useState(false)
   const [showFallback, setShowFallback] = useState(true)
   const [aspectRatio, setAspectRatio] = useState<number>(4 / 5)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    async function loadFeaturedVideo() {
+    async function applyHeroVideo() {
+      const videoData = content.hero.video
+      if (!videoData?.videoUrl) {
+        setFeaturedVideo(null)
+        return
+      }
+
       try {
-        const response = await getFeaturedVideo()
-        if (response.success && response.data) {
-          if (response.data.videoUrl) {
-            let finalAspectRatio = response.data.aspectRatio
-            if (finalAspectRatio) {
-              setAspectRatio(finalAspectRatio)
-            } else {
-              const isNativeVideo = /\.(mp4|webm|ogg|m3u8|mov|avi)(\?|$)/i.test(response.data.videoUrl) ||
-                                    response.data.videoUrl.startsWith('blob:') ||
-                                    response.data.videoUrl.startsWith('data:video/')
-              if (isNativeVideo) {
-                try {
-                  const detectedRatio = await detectVideoAspectRatio(response.data.videoUrl)
-                  if (detectedRatio) {
-                    finalAspectRatio = detectedRatio
-                    setAspectRatio(detectedRatio)
-                  }
-                } catch (error) {
-                  setAspectRatio(4 / 5)
-                }
-              } else {
-                if (response.data.videoUrl.includes('instagram.com/reel/')) {
-                  setAspectRatio(9 / 16)
-                } else if (response.data.videoUrl.includes('instagram.com/p/')) {
-                  setAspectRatio(1)
-                } else {
-                  setAspectRatio(4 / 5)
-                }
+        let finalAspectRatio = videoData.aspectRatio
+        if (finalAspectRatio) {
+          setAspectRatio(finalAspectRatio)
+        } else {
+          const isNativeVideo =
+            /\.(mp4|webm|ogg|m3u8|mov|avi)(\?|$)/i.test(videoData.videoUrl) ||
+            videoData.videoUrl.startsWith('blob:') ||
+            videoData.videoUrl.startsWith('data:video/')
+          if (isNativeVideo) {
+            try {
+              const detectedRatio = await detectVideoAspectRatio(videoData.videoUrl)
+              if (detectedRatio) {
+                finalAspectRatio = detectedRatio
+                setAspectRatio(detectedRatio)
               }
+            } catch {
+              setAspectRatio(4 / 5)
             }
-            setFeaturedVideo({ ...response.data, aspectRatio: finalAspectRatio })
-            setIsVideoPlaying(true)
+          } else if (videoData.videoUrl.includes('instagram.com/reel/')) {
+            setAspectRatio(9 / 16)
+          } else if (videoData.videoUrl.includes('instagram.com/p/')) {
+            setAspectRatio(1)
+          } else {
+            setAspectRatio(4 / 5)
           }
         }
+        setFeaturedVideo({ ...videoData, aspectRatio: finalAspectRatio })
+        setIsVideoPlaying(true)
       } catch (error) {
-        console.error('Error loading featured video:', error)
-      } finally {
-        setIsLoading(false)
+        console.error('Error applying hero video:', error)
       }
     }
-    loadFeaturedVideo()
-  }, [])
+
+    if (!isContentLoading) {
+      applyHeroVideo()
+    }
+  }, [content.hero.video, isContentLoading])
 
   useEffect(() => {
     if (featuredVideo?.videoUrl?.includes('instagram.com')) {
@@ -289,7 +284,9 @@ export default function HeroSection() {
                   textShadow: '0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,255,255,0.6)',
                 }}
               >
-                {t('home.heroTitle')}<br />{t('home.heroSubtitle')}
+                {text(content.hero.titleLine1)}
+                <br />
+                {text(content.hero.titleLine2)}
               </Typography>
             </motion.div>
 
@@ -304,7 +301,7 @@ export default function HeroSection() {
                   maxWidth: '400px'
                 }}
               >
-                {t('home.heroDescription')}
+                {text(content.hero.description)}
               </Typography>
             </motion.div>
           </Box>
@@ -341,7 +338,7 @@ export default function HeroSection() {
                 >
                   <VideoCover aspectRatio={1} mediaType="video">
                     <video
-                      src="/herosectionfallback.mp4"
+                      src={content.hero.fallbackVideoUrl}
                       autoPlay
                       muted
                       playsInline

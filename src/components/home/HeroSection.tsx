@@ -286,7 +286,6 @@ export default function HeroSection() {
               >
                 {text(content.hero.titleLine1)}
                 <br />
-                {text(content.hero.titleLine2)}
               </Typography>
             </motion.div>
 

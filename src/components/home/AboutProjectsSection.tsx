@@ -32,9 +32,8 @@ export default function AboutProjectsSection() {
         const response = await getProjects()
         if (response.success && response.data) {
           setProjects(
-            response.data.filter(
-              (project) =>
-                project.hasAvailability || (project.availablePhasesCount ?? 0) > 0
+            [...response.data].sort(
+              (a, b) => (b.availablePhasesCount ?? 0) - (a.availablePhasesCount ?? 0)
             )
           )
         }

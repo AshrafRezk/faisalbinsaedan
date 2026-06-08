@@ -176,6 +176,12 @@ interface SalesforceProjectRecord {
   Map_Geometry_JSON__c?: string
 }
 
+const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
+
+function isValidSalesforceId(id: string): boolean {
+  return SALESFORCE_ID_PATTERN.test(id)
+}
+
 interface SalesforceContentDocumentLinkRecord {
   ContentDocumentId: string
   LinkedEntityId: string
@@ -401,7 +407,7 @@ function pickMediaFromAttachments(attachments: Array<{ title: string; fileExtens
 
 // Projects
 export async function getProjects() {
-  const CACHE_KEY = 'binsaedan_projects_cache'
+  const CACHE_KEY = 'binsaedan_projects_cache_v4'
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Check cache
@@ -447,11 +453,20 @@ export async function getProjects() {
     }
 
     const projectIds = sfProjects.map((p) => p.Id)
-    const mediaByProjectId = await getProjectsMedia(projectIds)
+    const [mediaByProjectId, availableUnitsByProjectId] = await Promise.all([
+      getProjectsMedia(projectIds),
+      getAvailableUnitsCountsForProjects(projectIds).catch((error) => {
+        console.warn('[Projects] Live unit counts failed, using rollup fallback:', error)
+        return new Map<string, number>()
+      }),
+    ])
 
     // Transform to application format
     const mappedProjects = sfProjects.map((p) => {
-      const availableUnitsCount = Number(p.Available_Units__c || 0)
+      const availableUnitsCount = resolveAvailableUnitsCount(
+        availableUnitsByProjectId.get(p.Id),
+        p.Available_Units__c
+      )
       const mapGeometryJson = (() => {
         const raw = (p.Map_Geometry_JSON__c || '').trim()
         if (!raw) return undefined
@@ -525,6 +540,85 @@ function parseSalesforceAggregateCount(record: Record<string, unknown> | undefin
     }
   }
   return 0
+}
+
+function resolveAvailableUnitsCount(
+  liveCount: number | undefined,
+  rollupCount: number | undefined | null
+): number {
+  const live = liveCount ?? 0
+  const rollup = Number(rollupCount || 0)
+  return live > 0 ? live : rollup
+}
+
+function projectIdPrefixForUnitMatch(projectId: string): string {
+  return projectId.substring(0, 15).toLowerCase()
+}
+
+function resolveProjectIdFromUnitProjectField(
+  value: string | undefined,
+  prefixToProjectId: Map<string, string>
+): string | undefined {
+  const extracted = extractSalesforceIdFromAnchor(value) || value || ''
+  if (!extracted) return undefined
+  return prefixToProjectId.get(extracted.substring(0, 15).toLowerCase())
+}
+
+async function getAvailableUnitsCountForProject(
+  projectId: string,
+  rollupCount?: number | null
+): Promise<number> {
+  if (!isValidSalesforceId(projectId)) return 0
+
+  const projectPrefix = projectIdPrefixForUnitMatch(projectId)
+
+  try {
+    // Unit__c.Project__c is an HTML link field, not a lookup — match the embedded project id.
+    const result = await salesforceQuery<Record<string, unknown>>(
+      `SELECT COUNT(Id) unitCount FROM Unit__c WHERE Project__c LIKE '%${projectPrefix}%' AND Status__c = 'Available'`
+    )
+    return resolveAvailableUnitsCount(
+      parseSalesforceAggregateCount(result.records?.[0]),
+      rollupCount
+    )
+  } catch (e) {
+    console.warn(`[Units] Failed to count available units for project ${projectId}:`, e)
+    return Number(rollupCount || 0)
+  }
+}
+
+async function getAvailableUnitsCountsForProjects(projectIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  const validIds = projectIds.filter(isValidSalesforceId)
+  if (validIds.length === 0) return counts
+
+  const prefixToProjectId = new Map<string, string>()
+  for (const projectId of validIds) {
+    counts.set(projectId, 0)
+    prefixToProjectId.set(projectIdPrefixForUnitMatch(projectId), projectId)
+  }
+
+  const pageSize = 2000
+  let offset = 0
+
+  while (true) {
+    const result = await salesforceQuery<{ Project__c?: string }>(
+      `SELECT Project__c FROM Unit__c WHERE Status__c = 'Available' ORDER BY Id LIMIT ${pageSize} OFFSET ${offset}`
+    )
+    const records = result.records || []
+    if (records.length === 0) break
+
+    for (const record of records) {
+      const projectId = resolveProjectIdFromUnitProjectField(record.Project__c, prefixToProjectId)
+      if (!projectId) continue
+      counts.set(projectId, (counts.get(projectId) ?? 0) + 1)
+    }
+
+    if (records.length < pageSize) break
+    offset += pageSize
+  }
+
+  return counts
 }
 
 export async function getHomePageStats() {
@@ -622,11 +716,13 @@ export async function getProject(id: string) {
       return { success: false, error: 'Project not found in Salesforce' }
     }
 
-    const { notes, attachments: allAttachments } = await getProjectNotesAndAttachments(id)
+    const [{ notes, attachments: allAttachments }, availableUnitsCount] = await Promise.all([
+      getProjectNotesAndAttachments(id),
+      getAvailableUnitsCountForProject(id, p.Available_Units__c),
+    ])
     const modelFiles = extractProjectModelFiles(allAttachments)
     const attachments = allAttachments.filter((a) => !isModelAttachmentTitle(a.title))
     const media = pickMediaFromAttachments(allAttachments)
-    const availableUnitsCount = Number(p.Available_Units__c || 0)
     const mapCentroidLat = typeof p.Map_Centroid_Lat__c === 'number' ? p.Map_Centroid_Lat__c : undefined
     const mapCentroidLng = typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined
     const mapGeometryJson = (() => {

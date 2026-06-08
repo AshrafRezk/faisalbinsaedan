@@ -420,7 +420,7 @@ export default function Contact() {
                         {isRtl ? activeLocation.project : activeLocation.projectEn}
                       </Typography>
                       {activeLocation.isHq && (
-                        <Typography variant="caption" sx={{ color: 'secondary.main', fontWeight: 600, display: 'block', mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, display: 'block', mt: 0.5 }}>
                           {isRtl ? 'الإدارة العامة' : 'General Administration'}
                         </Typography>
                       )}
@@ -472,7 +472,7 @@ export default function Contact() {
                         alignItems: 'center',
                         gap: 0.5,
                         textDecoration: 'none',
-                        color: 'secondary.main',
+                        color: 'primary.main',
                         fontWeight: 600,
                         fontSize: '0.85rem',
                         '&:hover': {
@@ -507,7 +507,7 @@ export default function Contact() {
                     <Typography variant="h6" fontWeight="bold" color="primary.main">
                       {isRtl ? 'مواقع فروع ومكاتب المبيعات' : 'Office & Sales Branch Locations'}
                     </Typography>
-                    <MapPin size={20} className="text-secondary-main" />
+                    <MapPin size={20} color="#1a365d" />
                   </Box>
                   <Box sx={{ flexGrow: 1, maxHeight: 440, overflowY: 'auto' }}>
                     {salesOffices.map((office, idx) => {
@@ -530,20 +530,20 @@ export default function Contact() {
                             color: 'text.primary',
                             borderRight: isRtl && isActive ? '4px solid' : 'none',
                             borderLeft: !isRtl && isActive ? '4px solid' : 'none',
-                            borderRightColor: 'secondary.main',
-                            borderLeftColor: 'secondary.main',
+                            borderRightColor: 'primary.main',
+                            borderLeftColor: 'primary.main',
                             bgcolor: isActive
-                              ? alpha(theme.palette.secondary.main, 0.08)
+                              ? alpha(theme.palette.primary.main, 0.08)
                               : idx % 2 === 0
                               ? 'transparent'
                               : 'rgba(0,0,0,0.01)',
                             transition: 'all 0.2s ease',
                             '&:hover': {
                               bgcolor: isActive
-                                ? alpha(theme.palette.secondary.main, 0.12)
-                                : 'rgba(201, 162, 39, 0.06)',
+                                ? alpha(theme.palette.primary.main, 0.12)
+                                : alpha(theme.palette.primary.main, 0.06),
                               '& .project-name': {
-                                color: 'secondary.main',
+                                color: 'primary.main',
                                 transform: isRtl ? 'translateX(-4px)' : 'translateX(4px)',
                               },
                             },
@@ -555,7 +555,7 @@ export default function Contact() {
                               fontWeight={isActive ? 700 : 600}
                               sx={{
                                 fontSize: '0.95rem',
-                                color: isActive ? 'secondary.main' : 'text.primary',
+                                color: isActive ? 'primary.main' : 'text.primary',
                                 transition: 'all 0.2s ease-in-out',
                               }}
                             >
@@ -577,21 +577,21 @@ export default function Contact() {
                               display: 'flex',
                               alignItems: 'center',
                               gap: 0.5,
-                              color: isActive ? 'secondary.main' : 'text.secondary',
+                              color: isActive ? 'primary.main' : 'text.secondary',
                               fontWeight: 600,
                               fontSize: '0.82rem',
                               textDecoration: 'none',
                               border: '1px solid',
-                              borderColor: isActive ? 'secondary.main' : 'divider',
+                              borderColor: isActive ? 'primary.main' : 'divider',
                               borderRadius: 1,
                               px: 1.5,
                               py: 0.6,
                               bgcolor: isActive ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
                               transition: 'all 0.2s ease-in-out',
                               '&:hover': {
-                                bgcolor: 'secondary.main',
+                                bgcolor: 'primary.main',
                                 color: 'white',
-                                borderColor: 'secondary.main',
+                                borderColor: 'primary.main',
                               },
                             }}
                           >

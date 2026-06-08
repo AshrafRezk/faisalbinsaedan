@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Box, Container, Typography, Grid } from '@mui/material'
+import { Box, Container, Typography } from '@mui/material'
 import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,9 @@ declare global {
   }
 }
 
+/** AppBar pt (16px) + Toolbar min-height (64px) + safe area — keeps video below the navbar */
+const NAVBAR_OFFSET = 'calc(80px + env(safe-area-inset-top, 0px))'
+
 export default function HeroSection() {
   const { t } = useTranslation()
   const { content, isLoading: isContentLoading, text } = useHomePageContent()
@@ -27,7 +30,7 @@ export default function HeroSection() {
   const isLoading = isContentLoading
   const [instagramEmbedFailed, setInstagramEmbedFailed] = useState(false)
   const [showFallback, setShowFallback] = useState(true)
-  const [aspectRatio, setAspectRatio] = useState<number>(4 / 5)
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -55,14 +58,14 @@ export default function HeroSection() {
                 setAspectRatio(detectedRatio)
               }
             } catch {
-              setAspectRatio(4 / 5)
+              setAspectRatio(16 / 9)
             }
           } else if (videoData.videoUrl.includes('instagram.com/reel/')) {
             setAspectRatio(9 / 16)
           } else if (videoData.videoUrl.includes('instagram.com/p/')) {
             setAspectRatio(1)
           } else {
-            setAspectRatio(4 / 5)
+            setAspectRatio(16 / 9)
           }
         }
         setFeaturedVideo({ ...videoData, aspectRatio: finalAspectRatio })
@@ -117,10 +120,10 @@ export default function HeroSection() {
     const targetPosition = target.getBoundingClientRect().top + window.pageYOffset
     const startPosition = window.pageYOffset
     const distance = targetPosition - startPosition
-    const duration = 1500 // 1.5 seconds slow animated scroll
+    const duration = 1500
     let start: number | null = null
 
-    const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+    const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
     const animation = (currentTime: number) => {
       if (start === null) start = currentTime
@@ -143,12 +146,9 @@ export default function HeroSection() {
             sx={{
               width: '100%',
               height: '100%',
-              background: featuredVideo?.coverImageUrl 
-                ? `url(${featuredVideo.coverImageUrl}) center/cover` 
+              background: featuredVideo?.coverImageUrl
+                ? `url(${featuredVideo.coverImageUrl}) center/cover`
                 : 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
             }}
           />
         </VideoCover>
@@ -194,10 +194,11 @@ export default function HeroSection() {
       )
     }
 
-    const isNativeVideo = /\.(mp4|webm|ogg|m3u8|mov|avi)(\?|$)/i.test(featuredVideo.videoUrl) ||
-                          featuredVideo.videoUrl.startsWith('blob:') ||
-                          featuredVideo.videoUrl.startsWith('data:video/')
-    
+    const isNativeVideo =
+      /\.(mp4|webm|ogg|m3u8|mov|avi)(\?|$)/i.test(featuredVideo.videoUrl) ||
+      featuredVideo.videoUrl.startsWith('blob:') ||
+      featuredVideo.videoUrl.startsWith('data:video/')
+
     if (isNativeVideo) {
       return (
         <VideoCover aspectRatio={aspectRatio} mediaType="video">
@@ -256,131 +257,152 @@ export default function HeroSection() {
   }
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden', pt: { xs: 10, md: 12 }, pb: { xs: 8, md: 4 } }}>
-      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 10, px: { xs: 2, md: 4, lg: 6 }, height: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }}>
-        
-        <Box sx={{ 
-          position: 'relative', 
-          width: '100%', 
-          display: 'flex', 
-          flexDirection: { xs: 'column', md: 'row' },
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          gap: { xs: 8, md: 4, lg: 8 },
-          my: { xs: 8, md: 10 } 
-        }}>
-          
-          {/* Main Title & Description */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 4, md: 6 }, flex: 1, zIndex: 10, maxWidth: { xs: '100%', md: '50%' } }}>
-            <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}>
-              <Typography
-                variant="h1"
-                sx={{
-                  fontSize: { xs: '3rem', sm: '4rem', md: '4rem', lg: '5rem' },
-                  fontWeight: 400,
-                  color: '#102d4a',
-                  lineHeight: 1.05,
-                  letterSpacing: '-0.03em',
-                  textShadow: '0 0 20px rgba(255,255,255,0.9), 0 0 40px rgba(255,255,255,0.6)',
-                }}
-              >
-                {text(content.hero.titleLine1)}
-                <br />
-              </Typography>
-            </motion.div>
+    <Box
+      sx={{
+        position: 'relative',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background video — starts below navbar */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: NAVBAR_OFFSET,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+          overflow: 'hidden',
+          bgcolor: '#102d4a',
+          '& > *': { width: '100%', height: '100%' },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            background: featuredVideo?.coverImageUrl
+              ? `url(${featuredVideo.coverImageUrl}) center/cover`
+              : 'linear-gradient(135deg, #102d4a 0%, #1e4670 100%)',
+          }}
+        />
 
-            <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: '#102d4a',
-                  fontWeight: 500,
-                  lineHeight: 1.5,
-                  fontSize: { xs: '1rem', md: '1.25rem' },
-                  maxWidth: '400px'
-                }}
-              >
-                {text(content.hero.description)}
-              </Typography>
-            </motion.div>
-          </Box>
-
-          {/* Center Square Video Container */}
-          <Box sx={{ width: { xs: '100%', sm: '80%', md: '450px', lg: '550px' }, aspectRatio: '1/1', position: 'relative', zIndex: 1, flexShrink: 0 }}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, ease: 'easeOut' }} style={{ width: '100%', height: '100%' }}>
-              <Box
-                sx={{
-                  width: '100%',
-                  height: '100%',
-                  overflow: 'hidden',
-                  borderRadius: 0, // Sharp corners
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-                  position: 'relative',
-                  bgcolor: '#e2e8f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  '& > *': { width: '100%', height: '100%' }
-                }}
-              >
-                {/* Fallback Video (Fades out when Salesforce video plays or when it finishes) */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 2,
-                    opacity: showFallback && !isVideoPlaying ? 1 : 0,
-                    transition: 'opacity 0.8s ease',
-                    pointerEvents: 'none',
-                    '& > *': { width: '100%', height: '100%' }
-                  }}
-                >
-                  <VideoCover aspectRatio={1} mediaType="video">
-                    <video
-                      src={content.hero.fallbackVideoUrl}
-                      autoPlay
-                      muted
-                      playsInline
-                      loop={!featuredVideo}
-                      onEnded={() => setShowFallback(false)}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </VideoCover>
-                </Box>
-
-                {/* Main Video Component (Fades in) */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 3,
-                    opacity: isVideoPlaying ? 1 : 0,
-                    transition: 'opacity 0.8s ease',
-                    '& > *': { width: '100%', height: '100%' }
-                  }}
-                >
-                  {renderVideo()}
-                </Box>
-
-                {/* Underlay Cover Image */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 1,
-                    background: featuredVideo?.coverImageUrl 
-                      ? `url(${featuredVideo.coverImageUrl}) center/cover` 
-                      : 'linear-gradient(135deg, #102d4a 0%, #1e4670 100%)',
-                  }}
-                />
-              </Box>
-            </motion.div>
-          </Box>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            opacity: showFallback && !isVideoPlaying ? 1 : 0,
+            transition: 'opacity 0.8s ease',
+            pointerEvents: 'none',
+          }}
+        >
+          <VideoCover aspectRatio={16 / 9} mediaType="video">
+            <video
+              src={content.hero.fallbackVideoUrl}
+              autoPlay
+              muted
+              playsInline
+              loop={!featuredVideo}
+              onEnded={() => setShowFallback(false)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </VideoCover>
         </Box>
 
-        {/* Scroll Down Section */}
-        <Box sx={{ position: 'absolute', bottom: { xs: 10, md: 30 }, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#102d4a' }} onClick={scrollToProjects}>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 3,
+            opacity: isVideoPlaying ? 1 : 0,
+            transition: 'opacity 0.8s ease',
+            pointerEvents: 'none',
+          }}
+        >
+          {renderVideo()}
+        </Box>
+
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 4,
+            background:
+              'linear-gradient(to bottom, rgba(16, 45, 74, 0.55) 0%, rgba(16, 45, 74, 0.35) 45%, rgba(16, 45, 74, 0.65) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+      </Box>
+
+      <Container
+        maxWidth="xl"
+        sx={{
+          position: 'relative',
+          zIndex: 10,
+          px: { xs: 2, md: 4, lg: 6 },
+          pt: { xs: 14, md: 16 },
+          pb: { xs: 12, md: 10 },
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1,
+          justifyContent: 'center',
+        }}
+      >
+        <Box sx={{ maxWidth: { xs: '100%', md: '42rem' } }}>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}>
+            <Typography
+              variant="h1"
+              sx={{
+                fontSize: { xs: '2.75rem', sm: '3.5rem', md: '4rem', lg: '5rem' },
+                fontWeight: 400,
+                color: 'common.white',
+                lineHeight: 1.05,
+                letterSpacing: '-0.03em',
+                textShadow: '0 2px 24px rgba(0, 0, 0, 0.35)',
+              }}
+            >
+              {text(content.hero.titleLine1)}
+              <br />
+              {text(content.hero.titleLine2)}
+            </Typography>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.92)',
+                fontWeight: 500,
+                lineHeight: 1.6,
+                fontSize: { xs: '1rem', md: '1.25rem' },
+                maxWidth: '480px',
+                mt: { xs: 3, md: 4 },
+                textShadow: '0 1px 12px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              {text(content.hero.description)}
+            </Typography>
+          </motion.div>
+        </Box>
+
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: { xs: 24, md: 40 },
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'common.white' }} onClick={scrollToProjects}>
             <Typography variant="body2" fontWeight="500" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1 }}>
               <motion.span animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }} style={{ display: 'inline-block' }}>
                 <ChevronDown size={32} />

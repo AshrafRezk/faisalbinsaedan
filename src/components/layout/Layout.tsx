@@ -11,10 +11,11 @@ import SaraBot from '../chatbot/SaraBot'
 export default function Layout() {
   const location = useLocation()
   const isHome = location.pathname === '/'
+  const isAboutUs = location.pathname === '/about-us'
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      <AnimatedBackground variant={isHome ? 'geometric' : 'blobs'} />
+      {!isAboutUs && <AnimatedBackground variant={isHome ? 'geometric' : 'blobs'} />}
       <Header />
       <Box
         component="main"

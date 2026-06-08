@@ -86,7 +86,7 @@ export default function CaseList({ cases }: { cases: Case[] }) {
                     size="small"
                   />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' }}>
                   {caseItem.description}
                 </Typography>
               </CardContent>

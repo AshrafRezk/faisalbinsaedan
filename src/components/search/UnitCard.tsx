@@ -107,7 +107,18 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
       <Typography
         variant="body2"
         color="text.secondary"
-        sx={{ mb: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isList ? 'normal' : 'nowrap' }}
+        sx={{
+          mb: 2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          ...(isList ? {
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical'
+          } : {
+            whiteSpace: 'nowrap'
+          })
+        }}
       >
         {i18n.language.startsWith('ar') ? unit.projectNameAr : unit.projectName} •{' '}
         {i18n.language.startsWith('ar') ? unit.phaseNameAr : unit.phaseName}

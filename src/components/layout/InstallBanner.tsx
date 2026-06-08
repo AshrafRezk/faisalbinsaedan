@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Snackbar, Alert, IconButton, Button, Box, Avatar } from '@mui/material'
-import { Close, Download } from '@mui/icons-material'
+import { Snackbar, Alert, Button, Box, Avatar } from '@mui/material'
+import { Download } from '@mui/icons-material'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../../lib/store'
 
@@ -11,8 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function InstallBanner() {
   const { t } = useTranslation()
-  const { installPromptEvent, isInstallable, showInstallBanner, setInstallPrompt, dismissInstallBanner } =
-    useAppStore()
+  const { installPromptEvent, setInstallPrompt } = useAppStore()
   const [isInstalled, setIsInstalled] = useState(() => 
     typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
   )
@@ -53,7 +52,7 @@ export default function InstallBanner() {
     setInstallPrompt(null)
   }
 
-  if (isInstalled || !isInstallable || !showInstallBanner) {
+  if (isInstalled) {
     return null
   }
 
@@ -67,38 +66,24 @@ export default function InstallBanner() {
         severity="info"
         icon={false}
         action={
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Button
-              color="inherit"
-              size="small"
-              onClick={handleInstall}
-              startIcon={<Download />}
-              sx={{ 
-                color: 'white',
-                fontWeight: 500,
-                textTransform: 'none',
-                borderRadius: '6px',
-                px: 1.5,
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              {t('installBanner.install')}
-            </Button>
-            <IconButton 
-              size="small" 
-              onClick={dismissInstallBanner} 
-              sx={{ 
-                color: 'white',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              <Close fontSize="small" />
-            </IconButton>
-          </Box>
+          <Button
+            color="inherit"
+            size="small"
+            onClick={handleInstall}
+            startIcon={<Download />}
+            sx={{
+              color: 'white',
+              fontWeight: 500,
+              textTransform: 'none',
+              borderRadius: '6px',
+              px: 1.5,
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            {t('installBanner.install')}
+          </Button>
         }
         sx={{
           bgcolor: 'primary.main',

@@ -528,7 +528,7 @@ function parseSalesforceAggregateCount(record: Record<string, unknown> | undefin
 }
 
 export async function getHomePageStats() {
-  const CACHE_KEY = 'binsaedan_home_stats_cache_v2'
+  const CACHE_KEY = 'binsaedan_home_stats_cache_v3'
   const CACHE_TTL = 5 * 60 * 1000
 
   try {
@@ -550,7 +550,7 @@ export async function getHomePageStats() {
   try {
     const [projectsRes, unitsFetchResult] = await Promise.all([
       getProjects(),
-      salesforceFetchUnits({ page: 1, pageSize: 1 }),
+      salesforceFetchUnits({ page: 1, pageSize: 1, status: 'Available' }),
     ])
 
     let projectsCount =
@@ -578,7 +578,7 @@ export async function getHomePageStats() {
     if (unitsCount === 0) {
       try {
         const unitsCountResult = await salesforceQuery<Record<string, unknown>>(
-          'SELECT COUNT(Id) unitCount FROM Unit__c'
+          "SELECT COUNT(Id) unitCount FROM Unit__c WHERE Status__c = 'Available'"
         )
         unitsCount = parseSalesforceAggregateCount(unitsCountResult.records?.[0])
       } catch (e) {

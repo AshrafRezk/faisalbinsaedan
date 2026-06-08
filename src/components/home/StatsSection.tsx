@@ -101,7 +101,7 @@ export default function StatsSection() {
   const stats: StatItem[] = [
     {
       value: unitsCount,
-      label: t('home.stats.units', 'Units'),
+      label: t('home.stats.units', 'Units Available'),
       href: '/search',
       loading: isLoadingCounts,
     },

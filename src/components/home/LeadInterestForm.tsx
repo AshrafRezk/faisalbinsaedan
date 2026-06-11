@@ -36,6 +36,7 @@ export type LeadInterestFormProps = {
   projectId?: string
   phaseId?: string
   unitId?: string
+  unitNumber?: string
   projectName?: string
   /** From unit page `Project__r` when list match fails or loads late */
   fallbackProvinceRegion?: string
@@ -83,6 +84,7 @@ export default function LeadInterestForm({
   projectId,
   phaseId,
   unitId,
+  unitNumber,
   projectName,
   fallbackProvinceRegion,
   fallbackCity,
@@ -331,6 +333,8 @@ export default function LeadInterestForm({
         data.region ? `Region: ${data.region}` : null,
         data.city ? `City: ${data.city}` : null,
         effectiveProjectId && projectLabel ? `Project: ${projectLabel}` : null,
+        unitNumber ? `Unit: ${unitNumber}` : null,
+        unitId && !unitNumber ? `Unit ID: ${unitId}` : null,
       ].filter(Boolean)
       const message = meta.length ? `${data.message}\n\n${meta.join('\n')}` : data.message
 

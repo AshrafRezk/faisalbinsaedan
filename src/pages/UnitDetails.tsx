@@ -206,20 +206,29 @@ export default function UnitDetails() {
               </Typography>
             </Box>
           </Box>
-          <Chip
-            label={statusLabels[unit.status] || unit.status}
-            color={statusColors[unit.status] || 'warning'}
-            sx={{
-              position: 'absolute',
-              top: { xs: 16, md: 20 },
-              right: { xs: 16, md: 20 },
-              zIndex: 4,
-              fontWeight: 600,
-              fontSize: { xs: '0.75rem', md: '0.875rem' },
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-            }}
-          />
-          <Box sx={{ position: 'absolute', top: { xs: 16, md: 20 }, left: { xs: 16, md: 20 }, zIndex: 4 }}>
+            <Box sx={{ position: 'absolute', top: { xs: 16, md: 20 }, right: { xs: 16, md: 20 }, zIndex: 4, display: 'flex', gap: 1 }}>
+              {unit.usageType === 'Rental' && (
+                <Chip
+                  label={i18n.language.startsWith('ar') ? 'تأجير' : 'Rental'}
+                  color="info"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: { xs: '0.75rem', md: '0.875rem' },
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  }}
+                />
+              )}
+              <Chip
+                label={statusLabels[unit.status] || unit.status}
+                color={statusColors[unit.status] || 'warning'}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' },
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                }}
+              />
+            </Box>
+            <Box sx={{ position: 'absolute', top: { xs: 16, md: 20 }, left: { xs: 16, md: 20 }, zIndex: 4 }}>
             <SubsidyBadges eligible={unit.eligibleForSubsidies} size="large" />
           </Box>
         </Box>
@@ -583,6 +592,7 @@ export default function UnitDetails() {
         projectId={unit.projectId}
         phaseId={unit.phaseId}
         unitId={unit.id}
+        unitNumber={unit.unitNumber}
         projectName={unit.projectNameAr || unit.projectName}
         fallbackProvinceRegion={unit.projectProvinceRegion}
         fallbackCity={unit.projectCity}

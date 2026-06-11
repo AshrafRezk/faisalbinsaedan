@@ -11,7 +11,7 @@ exports.handler = async (event) => {
 
     try {
         const body = JSON.parse(event.body);
-        const { name, country, phone, region, city, customerType, selectedUnit } = body;
+        const { name, country, phone, region, city, customerType, selectedUnit, interestedProjectId, interestedUnitId, interestedPhaseId } = body;
 
         // Basic validation
         if (!name || !country || !phone || !region || !city || !customerType) {
@@ -43,6 +43,10 @@ exports.handler = async (event) => {
         const { access_token, instance_url } = await tokenRes.json();
 
         // 2. Map fields and insert Lead
+        const projectField = process.env.SALESFORCE_LEAD_PROJECT_FIELD || 'Interested_Project__c';
+        const unitField = process.env.SALESFORCE_LEAD_UNIT_FIELD || 'Interested_Unit__c';
+        const phaseField = process.env.SALESFORCE_LEAD_PHASE_FIELD || 'Interested_Phase__c';
+
         // Standard Salesforce requires LastName and Company.
         const leadPayload = {
             LastName: name,
@@ -55,6 +59,10 @@ exports.handler = async (event) => {
             Private_Customer__c: customerType === 'Company' ? false : true,
             Description: selectedUnit ? `Interested in unit: ${selectedUnit}` : undefined
         };
+
+        if (interestedProjectId && projectField) leadPayload[projectField] = interestedProjectId;
+        if (interestedUnitId && unitField) leadPayload[unitField] = interestedUnitId;
+        if (interestedPhaseId && phaseField) leadPayload[phaseField] = interestedPhaseId;
 
         const sfApiUrl = `${instance_url}/services/data/v58.0/sobjects/Lead`;
 

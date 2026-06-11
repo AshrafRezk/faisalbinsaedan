@@ -9,6 +9,7 @@ interface RegisterInterestModalProps {
   projectId?: string
   phaseId?: string
   unitId?: string
+  unitNumber?: string
   projectName?: string
   fallbackProvinceRegion?: string
   fallbackCity?: string
@@ -20,6 +21,7 @@ export default function RegisterInterestModal({
   projectId,
   phaseId,
   unitId,
+  unitNumber,
   projectName,
   fallbackProvinceRegion,
   fallbackCity,
@@ -55,6 +57,7 @@ export default function RegisterInterestModal({
           projectId={projectId}
           phaseId={phaseId}
           unitId={unitId}
+          unitNumber={unitNumber}
           projectName={projectName}
           fallbackProvinceRegion={fallbackProvinceRegion}
           fallbackCity={fallbackCity}

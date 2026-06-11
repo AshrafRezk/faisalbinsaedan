@@ -48,6 +48,9 @@ interface ChatState {
     city: string
     customerType: string
     selectedUnit?: string
+    interestedProjectId?: string
+    interestedUnitId?: string
+    interestedPhaseId?: string
   }
   proposalFilters: {
     location: string
@@ -297,7 +300,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       options: [],
       leadData: {
         ...state.leadData,
-        selectedUnit: `Unit ${unit.unitNumber} (${unit.projectName})`
+        selectedUnit: `Unit ${unit.unitNumber} (${unit.projectName})`,
+        interestedProjectId: unit.projectId,
+        interestedUnitId: unit.id,
+        interestedPhaseId: unit.phaseId
       }
     }))
   },

@@ -22,9 +22,9 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "view": "View",
     "more": "More",
-    "call": "Call"
+    "call": "Call",
+    "commercial": "Commercial & Rental"
   },
   "footer": {
     "nav": "Footer navigation",
@@ -158,6 +158,33 @@
         "title": "Commercial",
         "description": "Our carefully selected commercial buildings inspire you to pursue your entrepreneurial dreams, as we provide the ideal starting point for whatever your business growth may be, from retail and entertainment venues to modern office space."
       }
+    }
+  },
+  "commercial": {
+    "title": "Commercial & Rental",
+    "subtitle": "Discover premium commercial spaces and rental properties designed for your business growth.",
+    "heroTitle": "Empower Your Business",
+    "heroSubtitle": "Premium Commercial & Rental Spaces",
+    "heroDescription": "Find the perfect office, retail, or warehouse space in prime locations to elevate your business operations.",
+    "formTitle": "Register Your Interest",
+    "formCta": "Please fill out the form below to express your interest in our commercial properties. Our team will contact you shortly.",
+    "propertyType": "Property Type",
+    "propertyTypePlaceholder": "Select Property Type",
+    "budget": "Expected Budget (Annual)",
+    "budgetPlaceholder": "Select Budget Range",
+    "area": "Required Area (sqm)",
+    "areaPlaceholder": "e.g. 500",
+    "propertyOptions": {
+      "office": "Office Space",
+      "retail": "Retail / Shop",
+      "warehouse": "Warehouse / Logistics",
+      "other": "Other"
+    },
+    "budgetOptions": {
+      "under100k": "Under 100k SAR",
+      "100kTo500k": "100k - 500k SAR",
+      "500kTo1m": "500k - 1M SAR",
+      "above1m": "Above 1M SAR"
     }
   },
   "collaboration": {

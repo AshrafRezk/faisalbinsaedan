@@ -583,6 +583,7 @@ export default function UnitDetails() {
         projectId={unit.projectId}
         phaseId={unit.phaseId}
         unitId={unit.id}
+        unitNumber={unit.unitNumber}
         projectName={unit.projectNameAr || unit.projectName}
         fallbackProvinceRegion={unit.projectProvinceRegion}
         fallbackCity={unit.projectCity}

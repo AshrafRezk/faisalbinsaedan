@@ -554,11 +554,11 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
             gap: 1,
             width: 'calc(100% - 32px)',
             maxWidth: '100%',
-            bgcolor: 'rgba(20, 20, 20, 0.85)',
+            bgcolor: 'rgba(34, 53, 89, 0.92)',
             backdropFilter: 'blur(12px)',
             p: 0.75,
             borderRadius: 2,
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.15)',
           }}
         >
           {regions.map((regionName) => {
@@ -568,15 +568,16 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
                 key={regionName}
                 onClick={() => setSelectedRegion(regionName)}
                 sx={{
-                  color: isSelected ? '#223559' : '#fff',
-                  fontWeight: isSelected ? 700 : 500,
+                  color: '#fff',
+                  fontWeight: isSelected ? 700 : 400,
                   fontSize: '0.75rem',
                   textTransform: 'none',
                   px: 2,
                   py: 0.75,
                   borderRadius: 1.5,
                   transition: 'all 0.2s',
-                  borderBottom: isSelected ? '2px solid #223559' : '2px solid transparent',
+                  opacity: isSelected ? 1 : 0.6,
+                  borderBottom: isSelected ? '2px solid rgba(255,255,255,0.9)' : '2px solid transparent',
                   '&:hover': {
                     bgcolor: 'rgba(255,255,255,0.1)',
                   },

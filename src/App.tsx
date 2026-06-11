@@ -12,6 +12,7 @@ import ProjectDetails from './pages/ProjectDetails'
 import Login from './pages/Login'
 import Community from './pages/Community'
 import Contact from './pages/Contact'
+import CommercialRental from './pages/CommercialRental'
 import Offline from './pages/Offline'
 import ComingSoon from './pages/ComingSoon'
 import AboutUs from './pages/AboutUs'
@@ -95,6 +96,7 @@ function App() {
           <Route path="project/:id" element={<ProjectDetails />} />
           <Route path="unit/:id" element={<UnitDetails />} />
           {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
+          <Route path="commercial-rental" element={<CommercialRental />} />
           {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
           {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
           {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}

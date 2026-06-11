@@ -2,6 +2,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Container, Link, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import BrandLogo from './BrandLogo'
+import AppInstallButtons from './AppInstallButtons'
 
 export default function Footer() {
   const { t } = useTranslation()
@@ -41,6 +42,13 @@ export default function Footer() {
           <RouterLink to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
             <BrandLogo variant="footer" />
           </RouterLink>
+
+          <Box sx={{ my: { xs: 3, sm: 0 }, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" color="text.secondary" fontWeight="medium">
+              {t('installBanner.downloadApp', 'Download Our App')}
+            </Typography>
+            <AppInstallButtons />
+          </Box>
 
           <Box
             component="nav"

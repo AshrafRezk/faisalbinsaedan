@@ -29,6 +29,7 @@ export default function Header() {
     { path: '/', label: t('common.home') },
     { path: '/about-us', label: t('common.aboutUs') },
     { path: '/achievements', label: t('common.achievements') },
+    { path: '/commercial-rental', label: t('common.commercial') },
     { path: '/news', label: t('common.ourNews') },
   ]
 

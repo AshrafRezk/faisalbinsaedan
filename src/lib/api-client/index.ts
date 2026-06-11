@@ -11,6 +11,16 @@ import {
   HOME_PAGE_FALLBACKS,
   type HomePageContent,
 } from '../home-page-content'
+import {
+  buildAboutPageContent,
+  ABOUT_PAGE_FALLBACKS,
+  type AboutPageContent,
+} from '../about-page-content'
+import {
+  buildAchievementsPageContent,
+  ACHIEVEMENTS_PAGE_FALLBACKS,
+  type AchievementsPageContent,
+} from '../achievements-page-content'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -835,6 +845,98 @@ export async function getHomePageContent(): Promise<HomePageContent> {
   } catch (error) {
     console.error('[HomePageContent] Failed to load from Salesforce:', error)
     return HOME_PAGE_FALLBACKS
+  }
+}
+
+const ABOUT_PAGE_PWA_SOQL = `SELECT ${HOME_PAGE_PWA_FIELDS}
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'About%'
+  ORDER BY Value_Number__c ASC, CreatedDate DESC`
+
+const ABOUT_PAGE_PWA_SOQL_LEGACY = `SELECT Id, Name, Content_URL__c, Type__c, Location__c, Meta_keywords__c, Aspect_Ratio__c
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'About%'
+  ORDER BY CreatedDate DESC`
+
+let aboutPageContentCache: { data: AboutPageContent; fetchedAt: number } | null = null
+const ABOUT_PAGE_CONTENT_CACHE_MS = 5 * 60 * 1000
+
+async function queryAboutPagePwaRecords(): Promise<PWAContent[]> {
+  try {
+    const result = await salesforceQuery<PWAContent>(ABOUT_PAGE_PWA_SOQL)
+    return result.records || []
+  } catch (extendedFieldError) {
+    console.warn(
+      '[AboutPageContent] Extended fields query failed, retrying with legacy fields:',
+      extendedFieldError
+    )
+    const legacy = await salesforceQuery<PWAContent>(ABOUT_PAGE_PWA_SOQL_LEGACY)
+    return legacy.records || []
+  }
+}
+
+export async function getAboutPageContent(): Promise<AboutPageContent> {
+  if (
+    aboutPageContentCache &&
+    Date.now() - aboutPageContentCache.fetchedAt < ABOUT_PAGE_CONTENT_CACHE_MS
+  ) {
+    return aboutPageContentCache.data
+  }
+
+  try {
+    const records = await queryAboutPagePwaRecords()
+    const data = buildAboutPageContent(records as PWAContent[])
+    aboutPageContentCache = { data, fetchedAt: Date.now() }
+    return data
+  } catch (error) {
+    console.error('[AboutPageContent] Failed to load from Salesforce:', error)
+    return ABOUT_PAGE_FALLBACKS
+  }
+}
+
+const ACHIEVEMENTS_PAGE_PWA_SOQL = `SELECT ${HOME_PAGE_PWA_FIELDS}
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'Achievements%'
+  ORDER BY Value_Number__c ASC, CreatedDate DESC`
+
+const ACHIEVEMENTS_PAGE_PWA_SOQL_LEGACY = `SELECT Id, Name, Content_URL__c, Type__c, Location__c, Meta_keywords__c, Aspect_Ratio__c
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'Achievements%'
+  ORDER BY CreatedDate DESC`
+
+let achievementsPageContentCache: { data: AchievementsPageContent; fetchedAt: number } | null = null
+const ACHIEVEMENTS_PAGE_CONTENT_CACHE_MS = 5 * 60 * 1000
+
+async function queryAchievementsPagePwaRecords(): Promise<PWAContent[]> {
+  try {
+    const result = await salesforceQuery<PWAContent>(ACHIEVEMENTS_PAGE_PWA_SOQL)
+    return result.records || []
+  } catch (extendedFieldError) {
+    console.warn(
+      '[AchievementsPageContent] Extended fields query failed, retrying with legacy fields:',
+      extendedFieldError
+    )
+    const legacy = await salesforceQuery<PWAContent>(ACHIEVEMENTS_PAGE_PWA_SOQL_LEGACY)
+    return legacy.records || []
+  }
+}
+
+export async function getAchievementsPageContent(): Promise<AchievementsPageContent> {
+  if (
+    achievementsPageContentCache &&
+    Date.now() - achievementsPageContentCache.fetchedAt < ACHIEVEMENTS_PAGE_CONTENT_CACHE_MS
+  ) {
+    return achievementsPageContentCache.data
+  }
+
+  try {
+    const records = await queryAchievementsPagePwaRecords()
+    const data = buildAchievementsPageContent(records as PWAContent[])
+    achievementsPageContentCache = { data, fetchedAt: Date.now() }
+    return data
+  } catch (error) {
+    console.error('[AchievementsPageContent] Failed to load from Salesforce:', error)
+    return ACHIEVEMENTS_PAGE_FALLBACKS
   }
 }
 

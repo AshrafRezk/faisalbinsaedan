@@ -6,90 +6,27 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { getBoardMembers, loadMissionVisionMarkdown } from '../lib/about/content'
-type MarkdownBlock =
-  | { type: 'h2'; text: string }
-  | { type: 'h3'; text: string }
-  | { type: 'p'; text: string }
-  | { type: 'ul'; items: string[] }
+import { getAboutPageContent } from '../lib/api-client'
+import { ABOUT_PAGE_FALLBACKS, type AboutBoardMember } from '../lib/about-page-content'
 
-function parseMarkdown(markdown: string): MarkdownBlock[] {
-  const lines = markdown.split('\n')
-  const blocks: MarkdownBlock[] = []
-  let listItems: string[] = []
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      blocks.push({ type: 'ul', items: listItems })
-      listItems = []
-    }
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim()
-    if (!line) {
-      flushList()
-      continue
-    }
-
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      listItems.push(line.slice(2).trim())
-      continue
-    }
-
-    flushList()
-
-    if (line.startsWith('### ')) {
-      blocks.push({ type: 'h3', text: line.slice(4).trim() })
-      continue
-    }
-
-    if (line.startsWith('## ')) {
-      blocks.push({ type: 'h2', text: line.slice(3).trim() })
-      continue
-    }
-
-    if (line.startsWith('# ')) {
-      blocks.push({ type: 'h2', text: line.slice(2).trim() })
-      continue
-    }
-
-    blocks.push({ type: 'p', text: line })
-  }
-
-  flushList()
-  return blocks
+type DisplayMember = {
+  name: string
+  title: string
+  description: string
+  image: string
+  linkedInUrl?: string
+  twitterUrl?: string
 }
 
-function extractVisionMission(blocks: MarkdownBlock[]) {
-  let section: 'vision' | 'mission' | null = null
-  const vision: string[] = []
-  const mission: string[] = []
-
-  for (const block of blocks) {
-    if (block.type === 'h2') {
-      const normalized = block.text.toLowerCase()
-      if (normalized === 'vision' || normalized === 'الرؤية') {
-        section = 'vision'
-      } else if (normalized === 'mission' || normalized === 'الرسالة') {
-        section = 'mission'
-      } else {
-        section = null
-      }
-      continue
-    }
-
-    if (!section) continue
-
-    if (section === 'vision') {
-      if (block.type === 'p') vision.push(block.text)
-    } else if (section === 'mission') {
-      if (block.type === 'ul') mission.push(...block.items)
-      if (block.type === 'p') mission.push(block.text)
-    }
+function localizeMember(member: AboutBoardMember, isEnglish: boolean): DisplayMember {
+  return {
+    name: isEnglish ? member.name.en : member.name.ar,
+    title: isEnglish ? member.title.en : member.title.ar,
+    description: isEnglish ? member.description.en : member.description.ar,
+    image: member.imageUrl,
+    linkedInUrl: member.linkedInUrl,
+    twitterUrl: member.twitterUrl,
   }
-
-  return { vision, mission }
 }
 
 function MemberCard({ member, onClick }: { member: { name: string; title: string; description: string; image: string }; onClick?: () => void }) {
@@ -241,23 +178,20 @@ function MemberCard({ member, onClick }: { member: { name: string; title: string
 export default function AboutUs() {
   const { t, i18n } = useTranslation()
   const language = i18n.resolvedLanguage || i18n.language
-  const [markdown, setMarkdown] = useState('')
+  const isEnglish = language.startsWith('en')
+  const [aboutContent, setAboutContent] = useState(ABOUT_PAGE_FALLBACKS)
   const [loading, setLoading] = useState(true)
-  const [selectedMember, setSelectedMember] = useState<{ name: string; title: string; description: string; image: string } | null>(null)
-
-  const members = useMemo(() => getBoardMembers(language), [language])
-  const markdownBlocks = useMemo(() => parseMarkdown(markdown), [markdown])
-  const { vision, mission } = useMemo(() => extractVisionMission(markdownBlocks), [markdownBlocks])
+  const [selectedMember, setSelectedMember] = useState<DisplayMember | null>(null)
 
   useEffect(() => {
     let active = true
     const loadContent = async () => {
       setLoading(true)
       try {
-        const content = await loadMissionVisionMarkdown(language)
-        if (active) setMarkdown(content)
+        const content = await getAboutPageContent()
+        if (active) setAboutContent(content)
       } catch {
-        if (active) setMarkdown('')
+        if (active) setAboutContent(ABOUT_PAGE_FALLBACKS)
       } finally {
         if (active) setLoading(false)
       }
@@ -269,34 +203,40 @@ export default function AboutUs() {
     }
   }, [language])
 
-  // Map elements into a precise Tree Structure mirroring the iOS UI/UX reference
-  const chairman = useMemo(() => members.find((m) => m.image.includes('tariq')) || members[2] || members[0], [members])
-  const ceo = useMemo(() => members.find((m) => m.image.includes('faisal')) || members[0], [members])
-  const osama = useMemo(() => members.find((m) => m.image.includes('osama')) || members[1] || members[0], [members])
-  const topRowMembers = useMemo(() => [chairman, ceo, osama], [chairman, ceo, osama])
+  const topRowMembers = useMemo(
+    () =>
+      aboutContent.boardMembers
+        .filter((member) => member.displayOrder <= 3)
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map((member) => localizeMember(member, isEnglish)),
+    [aboutContent.boardMembers, isEnglish]
+  )
 
-  const child1 = useMemo(() => members.find((m) => m.image.includes('alrashidi')) || members[3] || members[0], [members])
-  const child2 = useMemo(() => members.find((m) => m.image.includes('alfuraidi')) || members[4] || members[0], [members])
-  const bottomRowMembers = useMemo(() => [child1, child2], [child1, child2])
+  const bottomRowMembers = useMemo(
+    () =>
+      aboutContent.boardMembers
+        .filter((member) => member.displayOrder > 3)
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map((member) => localizeMember(member, isEnglish)),
+    [aboutContent.boardMembers, isEnglish]
+  )
 
-  // Fallbacks ensuring absolute visual readiness
-  const defaultVisionEn =
-    'To be a leading regional benchmark in creating sustainable, integrated real estate communities that elevate quality of life and deliver exceptional long-term investment value.'
-  const defaultVisionAr =
-    'أن نكون نموذجاً إقليمياً رائداً في تطوير مجتمعات عقارية متكاملة ومستدامة ترتقي بجودة الحياة وتقدم قيمة استثمارية استثنائية على المدى الطويل.'
-  const defaultMissionEn = [
-    'Developing innovative residential and commercial projects with the highest standards of quality and sustainability.',
-    'Fostering long-term partnerships with investors through transparent governance and structured real estate funds.',
-    'Aligning our strategic goals with Saudi Vision 2030 to support vibrant communities and robust economic growth.',
-  ]
-  const defaultMissionAr = [
-    'تطوير مشاريع سكنية وتجارية مبتكرة بأعلى معايير الجودة والاستدامة.',
-    'بناء شراكات طويلة الأمد مع المستثمرين من خلال حوكمة شفافة وصناديق عقارية مهيأة.',
-    'مواءمة أهدافنا الاستراتيجية مع رؤية المملكة 2030 لدعم المجتمعات الحيوية والنمو الاقتصادي المستدام.',
-  ]
+  const finalVision = useMemo(
+    () =>
+      aboutContent.vision.paragraphs
+        .map((paragraph) => (isEnglish ? paragraph.en : paragraph.ar))
+        .filter(Boolean),
+    [aboutContent.vision.paragraphs, isEnglish]
+  )
 
-  const finalVision = vision.length > 0 ? vision : [language.startsWith('en') ? defaultVisionEn : defaultVisionAr]
-  const finalMission = mission.length > 0 ? mission : language.startsWith('en') ? defaultMissionEn : defaultMissionAr
+  const finalMission = useMemo(
+    () =>
+      aboutContent.mission.items.map((item) => (isEnglish ? item.en : item.ar)).filter(Boolean),
+    [aboutContent.mission.items, isEnglish]
+  )
+
+  const visionTitle = isEnglish ? aboutContent.vision.title.en : aboutContent.vision.title.ar
+  const missionTitle = isEnglish ? aboutContent.mission.title.en : aboutContent.mission.title.ar
 
   return (
     <Box sx={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', bgcolor: 'background.default' }}>
@@ -599,7 +539,7 @@ export default function AboutUs() {
                             letterSpacing: '-0.5px',
                           }}
                         >
-                          {language.startsWith('en') ? 'Our Vision' : 'الرؤية'}
+                          {visionTitle}
                         </Typography>
                       </Box>
 
@@ -656,7 +596,7 @@ export default function AboutUs() {
                           letterSpacing: '-0.5px',
                         }}
                       >
-                        {language.startsWith('en') ? 'Our Mission' : 'الرسالة'}
+                        {missionTitle}
                       </Typography>
                     </Box>
 

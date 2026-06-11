@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { Phone, Mail, MapPin, Clock, Instagram, Linkedin } from 'lucide-react'
 import { getOfficeMapUrl } from '../lib/api-client'
 import LeadInterestForm from '../components/home/LeadInterestForm'
+import { useSiteContent } from '../contexts/SiteContentContext'
 
 // Custom X (Twitter) icon component
 const XIcon = ({ size = 20 }: { size?: number }) => (
@@ -136,6 +137,8 @@ const salesOffices: OfficeLocation[] = [
 
 export default function Contact() {
   const { t, i18n } = useTranslation()
+  const { pageCopy } = useSiteContent()
+  const contactHero = pageCopy('contact')
   const isRtl = i18n.language.startsWith('ar')
   const [mapUrl, setMapUrl] = useState<string | null>(null)
   const [mapMetaKeywords, setMapMetaKeywords] = useState<string | undefined>(undefined)
@@ -188,10 +191,10 @@ export default function Contact() {
             animate={{ opacity: 1, y: 0 }}
           >
             <Typography variant="h3" fontWeight="bold" gutterBottom>
-              {t('contact.title')}
+              {contactHero.title}
             </Typography>
             <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)', maxWidth: '42rem', mx: 'auto' }}>
-              {t('contact.description')}
+              {contactHero.subtitle}
             </Typography>
           </motion.div>
         </Container>

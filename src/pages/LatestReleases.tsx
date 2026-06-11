@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom'
 import { getProjects } from '../lib/api-client'
 import type { Project } from '../lib/types'
 import LazyImage from '../components/ui/LazyImage'
+import { useSiteContent } from '../contexts/SiteContentContext'
 
 type ProjectWithAvailability = Project & {
   hasAvailability?: boolean
@@ -235,6 +236,8 @@ function ProjectCardSkeleton() {
 
 export default function LatestReleases() {
   const { t, i18n } = useTranslation()
+  const { pageCopy, navLabel } = useSiteContent()
+  const latestReleasesHero = pageCopy('latestReleases')
   const isRtl = i18n.language === 'ar'
   const [projects, setProjects] = useState<ProjectWithAvailability[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -291,11 +294,11 @@ export default function LatestReleases() {
             >
               <Building2 size={22} />
               <Typography variant="overline" sx={{ letterSpacing: '0.2em', fontWeight: 600 }}>
-                {t('common.latestReleases')}
+                {navLabel('latestReleases', t('common.latestReleases'))}
               </Typography>
             </Box>
             <Typography variant="h3" fontWeight={700} gutterBottom>
-              {t('latestReleasesPage.title')}
+              {latestReleasesHero.title}
             </Typography>
             <Typography
               variant="h6"
@@ -308,7 +311,7 @@ export default function LatestReleases() {
                 lineHeight: 1.6,
               }}
             >
-              {t('latestReleasesPage.subtitle')}
+              {latestReleasesHero.subtitle}
             </Typography>
           </motion.div>
         </Container>

@@ -5,9 +5,11 @@ import { alpha } from '@mui/material/styles'
 import { Home, Search, Users, Building2, MoreHorizontal, Trophy, MessageSquare, Phone, Newspaper } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { COMPANY_PHONE_TEL, COMPANY_WHATSAPP_URL } from '../../lib/contact'
+import { useSiteContent } from '../../contexts/SiteContentContext'
 
 export default function BottomNav() {
   const { t } = useTranslation()
+  const { navLabel } = useSiteContent()
   const location = useLocation()
   const currentPath = location.pathname
 
@@ -23,16 +25,16 @@ export default function BottomNav() {
   }
 
   const visibleItems = [
-    { path: '/', label: t('common.home'), icon: Home },
-    { path: '/search', label: t('common.search'), icon: Search },
-    { path: '/achievements', label: t('common.achievements'), icon: Trophy },
+    { path: '/', label: navLabel('home', t('common.home')), icon: Home },
+    { path: '/search', label: navLabel('search', t('common.search')), icon: Search },
+    { path: '/achievements', label: navLabel('achievements', t('common.achievements')), icon: Trophy },
   ]
 
   const moreItems = [
-    { path: '/news', label: t('common.ourNews'), icon: Newspaper },
-    { path: '/community', label: t('common.community'), icon: Building2 },
-    { path: '/about-us', label: t('common.aboutUs'), icon: Users },
-    { path: '/contact', label: t('common.contact'), icon: MessageSquare },
+    { path: '/news', label: navLabel('ourNews', t('common.ourNews')), icon: Newspaper },
+    { path: '/community', label: navLabel('community', t('common.community')), icon: Building2 },
+    { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')), icon: Users },
+    { path: '/contact', label: navLabel('contact', t('common.contact')), icon: MessageSquare },
   ]
 
   const isMoreActive = moreItems.some(item => item.path === currentPath)
@@ -83,7 +85,7 @@ export default function BottomNav() {
         })}
         
         <BottomNavigationAction
-          label={t('common.more')}
+          label={navLabel('more', t('common.more'))}
           icon={<MoreHorizontal size={20} />}
           value="more"
           onClick={handleOpenMore}
@@ -130,7 +132,7 @@ export default function BottomNav() {
             <Phone size={20} />
           </ListItemIcon>
           <ListItemText
-            primary={t('common.call', 'Call')}
+            primary={navLabel('call', t('common.call', 'Call'))}
             primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }}
           />
         </MenuItem>

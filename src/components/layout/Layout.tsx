@@ -7,6 +7,7 @@ import BottomNav from './BottomNav'
 import InstallBanner from './InstallBanner'
 import AnimatedBackground from './AnimatedBackground'
 import SaraBot from '../chatbot/SaraBot'
+import { SiteContentProvider } from '../../contexts/SiteContentContext'
 
 export default function Layout() {
   const location = useLocation()
@@ -14,6 +15,7 @@ export default function Layout() {
   const isAboutUs = location.pathname === '/about-us'
 
   return (
+    <SiteContentProvider>
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {!isAboutUs && <AnimatedBackground variant={isHome ? 'geometric' : 'blobs'} />}
       <Header />
@@ -38,6 +40,7 @@ export default function Layout() {
       <InstallBanner />
       <SaraBot />
     </div>
+    </SiteContentProvider>
   )
 }
 

@@ -3,19 +3,21 @@ import { Box, Container, Link, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import BrandLogo from './BrandLogo'
 import AppInstallButtons from './AppInstallButtons'
+import { useSiteContent } from '../../contexts/SiteContentContext'
 
 export default function Footer() {
   const { t } = useTranslation()
+  const { navLabel } = useSiteContent()
   const year = new Date().getFullYear()
 
   const links = [
-    { path: '/', label: t('common.home') },
-    { path: '/about-us', label: t('common.aboutUs') },
-    { path: '/achievements', label: t('common.achievements') },
-    { path: '/news', label: t('common.ourNews') },
-    { path: '/community', label: t('common.community') },
-    { path: '/contact', label: t('common.contact') },
-    { path: '/search', label: t('common.search') },
+    { path: '/', label: navLabel('home', t('common.home')) },
+    { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
+    { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
+    { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
+    { path: '/community', label: navLabel('community', t('common.community')) },
+    { path: '/contact', label: navLabel('contact', t('common.contact')) },
+    { path: '/search', label: navLabel('search', t('common.search')) },
   ]
 
   return (

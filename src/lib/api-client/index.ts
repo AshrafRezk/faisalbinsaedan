@@ -21,6 +21,7 @@ import {
   ACHIEVEMENTS_PAGE_FALLBACKS,
   type AchievementsPageContent,
 } from '../achievements-page-content'
+import { buildSiteContent, SITE_CONTENT_FALLBACKS, type SiteContent } from '../site-content'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -937,6 +938,49 @@ export async function getAchievementsPageContent(): Promise<AchievementsPageCont
   } catch (error) {
     console.error('[AchievementsPageContent] Failed to load from Salesforce:', error)
     return ACHIEVEMENTS_PAGE_FALLBACKS
+  }
+}
+
+const SITE_PWA_SOQL = `SELECT ${HOME_PAGE_PWA_FIELDS}
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'Site%'
+  ORDER BY Value_Number__c ASC, CreatedDate DESC`
+
+const SITE_PWA_SOQL_LEGACY = `SELECT Id, Name, Content_URL__c, Type__c, Location__c, Meta_keywords__c, Aspect_Ratio__c
+  FROM PWA_Content__c
+  WHERE Location__c LIKE 'Site%'
+  ORDER BY CreatedDate DESC`
+
+let siteContentCache: { data: SiteContent; fetchedAt: number } | null = null
+const SITE_CONTENT_CACHE_MS = 5 * 60 * 1000
+
+async function querySitePwaRecords(): Promise<PWAContent[]> {
+  try {
+    const result = await salesforceQuery<PWAContent>(SITE_PWA_SOQL)
+    return result.records || []
+  } catch (extendedFieldError) {
+    console.warn(
+      '[SiteContent] Extended fields query failed, retrying with legacy fields:',
+      extendedFieldError
+    )
+    const legacy = await salesforceQuery<PWAContent>(SITE_PWA_SOQL_LEGACY)
+    return legacy.records || []
+  }
+}
+
+export async function getSiteContent(): Promise<SiteContent> {
+  if (siteContentCache && Date.now() - siteContentCache.fetchedAt < SITE_CONTENT_CACHE_MS) {
+    return siteContentCache.data
+  }
+
+  try {
+    const records = await querySitePwaRecords()
+    const data = buildSiteContent(records as PWAContent[])
+    siteContentCache = { data, fetchedAt: Date.now() }
+    return data
+  } catch (error) {
+    console.error('[SiteContent] Failed to load from Salesforce:', error)
+    return SITE_CONTENT_FALLBACKS
   }
 }
 

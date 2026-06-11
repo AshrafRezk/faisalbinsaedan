@@ -3,9 +3,12 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import CommercialLeadForm from '../components/commercial/CommercialLeadForm'
 import { Building2 } from 'lucide-react'
+import { useSiteContent } from '../contexts/SiteContentContext'
 
 export default function CommercialRental() {
   const { t } = useTranslation()
+  const { pageCopy } = useSiteContent()
+  const commercialHero = pageCopy('commercial')
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f4f7fa', pb: 10 }}>
@@ -51,10 +54,10 @@ export default function CommercialRental() {
               </Box>
             </Box>
             <Typography variant="h2" sx={{ color: 'white', fontWeight: 'bold', mb: 2, fontSize: { xs: '2rem', md: '3.5rem' } }}>
-              {t('commercial.heroTitle')}
+              {commercialHero.title}
             </Typography>
             <Typography variant="h5" sx={{ color: 'rgba(255,255,255,0.9)', maxWidth: 800, mx: 'auto', fontWeight: 'medium' }}>
-              {t('commercial.heroSubtitle')}
+              {commercialHero.subtitle}
             </Typography>
             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', maxWidth: 600, mx: 'auto', mt: 2 }}>
               {t('commercial.heroDescription')}

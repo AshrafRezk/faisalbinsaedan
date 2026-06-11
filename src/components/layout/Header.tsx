@@ -9,6 +9,7 @@ import { logout } from '../../lib/api-client'
 import BrandLogo from './BrandLogo'
 import NavContactActions from './NavContactActions'
 import ContactUsFormModal from './ContactUsFormModal'
+import { useSiteContent } from '../../contexts/SiteContentContext'
 
 /** True when this nav item should show as the current page (nested routes included; home is exact). */
 function isNavPathActive(pathname: string, itemPath: string): boolean {
@@ -21,22 +22,23 @@ export default function Header() {
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
   const { t, i18n } = useTranslation()
+  const { navLabel } = useSiteContent()
   const isRtl = i18n.language === 'ar'
   const [contactFormOpen, setContactFormOpen] = useState(false)
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null)
 
   const mainNavItems = [
-    { path: '/', label: t('common.home') },
-    { path: '/about-us', label: t('common.aboutUs') },
-    { path: '/achievements', label: t('common.achievements') },
-    { path: '/commercial-rental', label: t('common.commercial') },
-    { path: '/news', label: t('common.ourNews') },
+    { path: '/', label: navLabel('home', t('common.home')) },
+    { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
+    { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
+    { path: '/commercial-rental', label: navLabel('commercial', t('common.commercial')) },
+    { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]
 
   const moreNavItems = [
-    { path: '/latest-releases', label: t('common.latestReleases', 'Latest Releases') },
-    { path: '/community', label: t('common.community') },
-    { path: '/contact', label: t('common.support', 'Support') },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Latest Releases')) },
+    { path: '/community', label: navLabel('community', t('common.community')) },
+    { path: '/contact', label: navLabel('support', t('common.support', 'Support')) },
   ]
 
   const canShowBack = location.pathname !== '/'
@@ -118,7 +120,7 @@ export default function Header() {
               '&:hover': { opacity: 0.8 },
             }}
           >
-            {t('common.more', 'More')} <ChevronDown size={16} />
+            {navLabel('more', t('common.more', 'More'))} <ChevronDown size={16} />
           </Box>
           <Menu
             anchorEl={moreMenuAnchor}
@@ -179,11 +181,11 @@ export default function Header() {
             }}
           >
             <MessageSquare size={16} />
-            <Box component="span" sx={{ mt: 0.2 }}>{t('common.contact')}</Box>
+            <Box component="span" sx={{ mt: 0.2 }}>{navLabel('contact', t('common.contact'))}</Box>
           </Button>
           <IconButton
             onClick={() => setContactFormOpen(true)}
-            aria-label={t('common.contact')}
+            aria-label={navLabel('contact', t('common.contact'))}
             sx={{
               display: { xs: 'inline-flex', sm: 'none' },
               color: 'primary.main',

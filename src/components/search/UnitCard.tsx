@@ -66,6 +66,13 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
       </Box>
       <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 0.5, zIndex: 2 }}>
         <FavoriteButton unitId={unit.id} size="small" />
+        {unit.usageType === 'Rental' && (
+          <Chip
+            label={i18n.language.startsWith('ar') ? 'تأجير' : 'Rental'}
+            color="info"
+            size="small"
+          />
+        )}
         <Chip
           label={statusLabels[unit.status]}
           color={statusColors[unit.status]}

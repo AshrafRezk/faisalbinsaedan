@@ -120,7 +120,7 @@ export default function CommercialLeadForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             {...register('name')}
             label={t('contact.name')}
@@ -130,7 +130,7 @@ export default function CommercialLeadForm() {
             helperText={errors.name?.message}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             {...register('companyName')}
             label={t('contact.profileOptions.company', 'Company Name')}
@@ -140,7 +140,7 @@ export default function CommercialLeadForm() {
             helperText={errors.companyName?.message}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             {...register('email')}
             label={t('contact.email')}
@@ -151,7 +151,7 @@ export default function CommercialLeadForm() {
             helperText={errors.email?.message}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             {...register('phone')}
             label={t('contact.phone')}
@@ -164,7 +164,7 @@ export default function CommercialLeadForm() {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="propertyType"
             control={control}
@@ -183,7 +183,7 @@ export default function CommercialLeadForm() {
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
             name="budget"
             control={control}
@@ -202,7 +202,7 @@ export default function CommercialLeadForm() {
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             {...register('area')}
             label={t('commercial.area')}
@@ -214,7 +214,7 @@ export default function CommercialLeadForm() {
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             {...register('message')}
             label={t('contact.message')}

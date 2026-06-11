@@ -298,7 +298,8 @@
       "investor": "مستثمر",
       "supplier": "مورد",
       "operator": "مشغّل",
-      "customer": "عميل"
+      "customer": "عميل",
+      "company": "اسم الشركة"
     },
     "name": "الاسم",
     "namePlaceholder": "اسمك",

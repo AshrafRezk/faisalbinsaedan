@@ -66,7 +66,7 @@ export default function CommercialRental() {
       {/* Main Content */}
       <Container maxWidth="lg" sx={{ mt: -8, position: 'relative', zIndex: 10 }}>
         <Grid container justifyContent="center">
-          <Grid item xs={12} md={10} lg={8}>
+          <Grid size={{ xs: 12, md: 10, lg: 8 }}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <Paper 
                 elevation={0}

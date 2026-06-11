@@ -280,7 +280,8 @@
       "investor": "Investor",
       "supplier": "Supplier",
       "operator": "Operator",
-      "customer": "Customer"
+      "customer": "Customer",
+      "company": "Company Name"
     },
     "name": "Name",
     "namePlaceholder": "Your name",

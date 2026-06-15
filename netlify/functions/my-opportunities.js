@@ -1,4 +1,4 @@
-import { pickId } from '../lib/sf-pick-id.cjs'
+import { pickId, pickLabel, pickSfLookup } from '../lib/sf-pick-id.cjs'
 
 /**
  * Netlify Function: My Opportunities + related Units (SPA)
@@ -98,55 +98,63 @@ async function sfQuery(instanceUrl, accessToken, soql) {
   return body
 }
 
-function mapUnitRecord(r) {
+async function fetchProjectsByIds(instanceUrl, accessToken, projectIds) {
+  const unique = [...new Set(projectIds.filter(Boolean))]
+  if (unique.length === 0) return new Map()
+
+  const objectName = process.env.SALESFORCE_PROJECT_OBJECT || 'Project__c'
+  const idList = unique.map((id) => `'${id}'`).join(', ')
+  const soql = `SELECT Id, Name, Hero_Image_URL__c FROM ${objectName} WHERE Id IN (${idList})`
+  const res = await sfQuery(instanceUrl, accessToken, soql)
+  const map = new Map()
+  for (const row of res.records || []) {
+    map.set(row.Id, {
+      name: String(row.Name || '').trim(),
+      heroImageUrl: row.Hero_Image_URL__c || undefined,
+    })
+  }
+  return map
+}
+
+async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
+  const unique = [...new Set(unitIds.filter(Boolean))]
+  if (unique.length === 0) return new Map()
+
+  const objectName = process.env.SALESFORCE_UNIT_OBJECT || 'Unit__c'
+  const idList = unique.map((id) => `'${id}'`).join(', ')
+  const soql = `SELECT Id, Name,
+    Price__c, Final_Price__c,
+    Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c,
+    Finishing__c, Usage_Type__c, View__c,
+    Eligible_for_Subsidies__c, Subsidies__c,
+    Unit_Image__c
+    FROM ${objectName} WHERE Id IN (${idList})`
+  const res = await sfQuery(instanceUrl, accessToken, soql)
+  const map = new Map()
+  for (const row of res.records || []) {
+    map.set(row.Id, row)
+  }
+  return map
+}
+
+function resolveProjectFromField(projectFieldValue, projectsById) {
+  const ref = pickSfLookup(projectFieldValue)
+  const details = ref.id ? projectsById.get(ref.id) : undefined
   return {
-    id: r.Id,
-    projectId: r.Project__c || '',
-    phaseId: r.Phase__c || '',
-    unitNumber: r.Name,
-    externalId: r.External_ID__c,
-    price: Number(r.Price__c || 0),
-    finalPrice: r.Final_Price__c ?? undefined,
-    status: (r.Status__c || 'Available'),
-    bedrooms: Number(r.Number_of_Bedrooms__c || 0),
-    bathrooms: r.Number_of_Bathrooms__c ?? undefined,
-    area: Number(r.Total_Area__c || 0),
-    bua: r.BUA__c ?? undefined,
-    floor: r.Floor__c ?? undefined,
-    finishing: r.Finishing__c ?? undefined,
-    usageType: r.Usage_Type__c ?? undefined,
-    view: r.View__c ?? undefined,
-    hasGarden: !!r.Has_Garden__c,
-    hasLand: !!r.Has_Land__c,
-    hasRoof: !!r.Has_Roof__c,
-    hasOutdoor: !!r.Has_Outdoor__c,
-    gardenArea: r.Garden_Area__c ?? undefined,
-    landArea: r.Land_Area__c ?? undefined,
-    roofArea: r.Roof_Area__c ?? undefined,
-    outdoorArea: r.Outdoor_Area__c ?? undefined,
-    eligibleForSubsidies: !!r.Eligible_for_Subsidies__c,
-    subsidies: r.Subsidies__c ?? undefined,
-    deliveryDate: undefined,
-    images: r.Unit_Image__c ? [r.Unit_Image__c] : [],
-    unitImage: r.Unit_Image__c ?? undefined,
-    notes: undefined,
-    paymentProgress: undefined,
-    paymentStatus: undefined,
-    // optional labels if present (when unit comes from Opportunity.Unit__r)
-    projectName: r.Project__r?.Name ?? undefined,
-    projectNameAr: r.Project__r?.Name ?? undefined,
-    projectHeroImage: r.Project__r?.Hero_Image_URL__c ?? undefined,
-    phaseName: undefined,
-    phaseNameAr: undefined,
-    buildingName: undefined,
-    blockName: undefined,
+    id: ref.id,
+    name: details?.name || ref.name || '',
+    heroImageUrl: details?.heroImageUrl,
   }
 }
 
-function unitFromOpportunity(opp) {
-  const u = opp?.Unit__r
-  if (!u || !u.Id) return null
-  return mapUnitRecord(u)
+function resolveUnitFromField(unitFieldValue, unitsById) {
+  const ref = pickSfLookup(unitFieldValue)
+  const record = ref.id ? unitsById.get(ref.id) : undefined
+  return {
+    id: ref.id,
+    label: String(record?.Name || ref.name || pickLabel(unitFieldValue) || '').trim(),
+    record,
+  }
 }
 
 export const handler = async (event) => {
@@ -186,20 +194,7 @@ export const handler = async (event) => {
       'Id',
       'Name',
       'Project__c',
-      'Project__r.Name',
-      'Project__r.Hero_Image_URL__c',
       'Unit__c',
-      'Unit__r.Id',
-      'Unit__r.Name',
-      'Unit__r.Number_of_Bedrooms__c',
-      'Unit__r.Number_of_Bathrooms__c',
-      'Unit__r.Total_Area__c',
-      'Unit__r.BUA__c',
-      'Unit__r.Floor__c',
-      'Unit__r.Finishing__c',
-      'Unit__r.Usage_Type__c',
-      'Unit__r.View__c',
-      'Unit__r.Unit_Image__c',
       'Unit_Price__c',
       'Unit_Final_Price__c',
       'Unit_Usage_Type__c',
@@ -221,15 +216,24 @@ export const handler = async (event) => {
     const contracts = contractRes.records || []
     console.log(`[my-opportunities] Found ${contracts.length} contracts for account ${accountId}`)
 
+    const projectIds = contracts.map((c) => pickId(c.Project__c)).filter(Boolean)
+    const unitIds = contracts.map((c) => pickId(c.Unit__c)).filter(Boolean)
+    const [projectsById, unitsById] = await Promise.all([
+      fetchProjectsByIds(instanceUrl, accessToken, projectIds),
+      fetchUnitsByIds(instanceUrl, accessToken, unitIds),
+    ])
+
     // 3) Map Contract__c to standard Opportunity/Unit structures expected by the frontend
     const mappedOpportunities = contracts.map((c) => {
-      const u = c.Unit__r || {}
+      const project = resolveProjectFromField(c.Project__c, projectsById)
+      const unit = resolveUnitFromField(c.Unit__c, unitsById)
+      const u = unit.record || {}
       
       const mappedUnit = {
-        id: u.Id || c.Unit__c || c.Id,
-        projectId: c.Project__c || '',
+        id: unit.id || c.Id,
+        projectId: project.id || pickId(c.Project__c) || '',
         phaseId: '',
-        unitNumber: u.Name || c.Unit__c || 'N/A',
+        unitNumber: unit.label || 'N/A',
         externalId: c.Name,
         price: Number(c.Unit_Price__c || u.Price__c || 0),
         finalPrice: c.Unit_Final_Price__c ? Number(c.Unit_Final_Price__c) : (u.Final_Price__c ?? undefined),
@@ -247,11 +251,11 @@ export const handler = async (event) => {
         deliveryDate: undefined,
         images: u.Unit_Image__c ? [u.Unit_Image__c] : [],
         unitImage: u.Unit_Image__c ?? undefined,
-        projectHeroImage: c.Project__r?.Hero_Image_URL__c ?? undefined,
+        projectHeroImage: project.heroImageUrl,
         paymentProgress: Number(c.Unit_Cumulative_Progress_Percentage__c || 0), // maps actual cumulative progress!
         paymentStatus: c.Payment_Method__c ?? undefined,
-        projectName: c.Project__r?.Name ?? undefined,
-        projectNameAr: c.Project__r?.Name ?? undefined,
+        projectName: project.name || undefined,
+        projectNameAr: project.name || undefined,
         phaseName: c.Phase__c ?? undefined,
         phaseNameAr: c.Phase__c ?? undefined,
         buildingName: c.Building__c ?? undefined,
@@ -260,7 +264,7 @@ export const handler = async (event) => {
 
       return {
         id: c.Id,
-        name: c.Project__r?.Name || 'Unit Contract',
+        name: project.name || 'Unit Contract',
         stageName: `${c.Name}`, // contract number (as displayed in screenshot)
         closeDate: null,
         amount: Number(c.Unit_Final_Price__c || c.Unit_Price__c || 0),

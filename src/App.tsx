@@ -22,6 +22,7 @@ import News from './pages/News'
 import NewsArticle from './pages/NewsArticle'
 import CollaborationComingSoon from './pages/CollaborationComingSoon'
 import Toast from './components/ui/Toast'
+import { SiteContentProvider } from './contexts/SiteContentContext'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore()
@@ -89,6 +90,7 @@ function App() {
 
   return (
     <MaintenanceGate>
+      <SiteContentProvider>
       <Routes>
         <Route path="/" element={<Layout />}>
           {getFeature('Show_Home_Page__c', true) && <Route index element={<Home />} />}
@@ -124,6 +126,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toast />
+      </SiteContentProvider>
     </MaintenanceGate>
   )
 }

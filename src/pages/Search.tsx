@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -24,11 +24,13 @@ import SearchAutocomplete from '../components/search/SearchAutocomplete'
 import { useAppStore } from '../lib/store'
 import { getProjects, searchUnits } from '../lib/api-client'
 import { Project, Unit } from '../lib/types'
-import OpenStreetProjectsMap, { ProjectLocation } from '../components/ui/OpenStreetProjectsMap'
+import ProjectsMap from '../components/home/ProjectsMap'
+
+const PROJECTS_PAGE_SIZE = 4
 
 export default function Search() {
   const { t, i18n } = useTranslation()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const isAr = i18n.language.startsWith('ar')
   const { filters, setFilters, setFilterDrawerOpen } = useAppStore()
@@ -39,6 +41,14 @@ export default function Search() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'projects'>('grid')
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+  const [projectsTotalCount, setProjectsTotalCount] = useState(0)
+  const [projectsPagination, setProjectsPagination] = useState<{
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  } | null>(null)
+  const projectTypeFilter = searchParams.get('projectType') || undefined
+  const projectsPage = Math.max(1, Number(searchParams.get('page')) || 1)
+  const prevProjectTypeRef = useRef(projectTypeFilter)
 
   // Set initial filter and view from URL params
   useEffect(() => {
@@ -52,6 +62,15 @@ export default function Search() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  useEffect(() => {
+    if (prevProjectTypeRef.current === projectTypeFilter) return
+    prevProjectTypeRef.current = projectTypeFilter
+    if (!searchParams.get('page')) return
+    const params = new URLSearchParams(searchParams)
+    params.delete('page')
+    setSearchParams(params, { replace: true })
+  }, [projectTypeFilter, searchParams, setSearchParams])
 
   // Fetch units when filters change (filtering happens on backend)
   useEffect(() => {
@@ -84,16 +103,48 @@ export default function Search() {
       if (viewMode !== 'projects') return
       setIsLoadingProjects(true)
       try {
-        const res = await getProjects()
-        if (res.success && res.data) setProjects(res.data)
+        const res = await getProjects({
+          projectType: projectTypeFilter,
+          page: projectsPage,
+          pageSize: PROJECTS_PAGE_SIZE,
+        })
+        if (res.success && res.data) {
+          setProjects(res.data)
+          setProjectsTotalCount(res.totalCount ?? res.data.length)
+          setProjectsPagination(
+            res.pagination
+              ? {
+                  hasNextPage: res.pagination.hasNextPage,
+                  hasPreviousPage: res.pagination.hasPreviousPage,
+                }
+              : {
+                  hasNextPage: projectsPage * PROJECTS_PAGE_SIZE < (res.totalCount ?? res.data.length),
+                  hasPreviousPage: projectsPage > 1,
+                }
+          )
+        } else {
+          setProjects([])
+          setProjectsTotalCount(0)
+          setProjectsPagination(null)
+        }
       } catch (e) {
         console.error('Error loading projects:', e)
+        setProjects([])
+        setProjectsTotalCount(0)
+        setProjectsPagination(null)
       } finally {
         setIsLoadingProjects(false)
       }
     }
     loadProjects()
-  }, [viewMode])
+  }, [viewMode, projectTypeFilter, projectsPage])
+
+  const setProjectsPage = (nextPage: number) => {
+    const params = new URLSearchParams(searchParams)
+    if (nextPage <= 1) params.delete('page')
+    else params.set('page', String(nextPage))
+    setSearchParams(params)
+  }
 
   const activeFiltersCount = Object.entries(filters).filter(
     ([key, value]) =>
@@ -110,18 +161,6 @@ export default function Search() {
       setFilters({ ...filters, projectId, page: 1 })
     }
   }
-
-  const projectLocations = useMemo<ProjectLocation[]>(() => {
-    return (projects || [])
-      .filter((p) => typeof p.mapCentroidLat === 'number' && typeof p.mapCentroidLng === 'number')
-      .map((p) => ({
-        id: p.id,
-        name: p.nameAr || p.name,
-        lat: p.mapCentroidLat as number,
-        lng: p.mapCentroidLng as number,
-        subtitle: p.locationAr || p.location,
-      }))
-  }, [projects])
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'transparent' }}>
@@ -143,7 +182,13 @@ export default function Search() {
                   {t('search.title')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {isLoading ? t('search.searching') : t('search.unitsFound', { count: totalCount })}
+                  {viewMode === 'projects'
+                    ? isLoadingProjects
+                      ? t('search.searching')
+                      : t('search.projectsFound', { count: projectsTotalCount })
+                    : isLoading
+                      ? t('search.searching')
+                      : t('search.unitsFound', { count: totalCount })}
                 </Typography>
               </Box>
 
@@ -280,16 +325,35 @@ export default function Search() {
                       </Card>
                     )
                   })}
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, pt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={isLoadingProjects || !projectsPagination?.hasPreviousPage}
+                      onClick={() => setProjectsPage(projectsPage - 1)}
+                    >
+                      {t('search.previous')}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={isLoadingProjects || !projectsPagination?.hasNextPage}
+                      onClick={() => setProjectsPage(projectsPage + 1)}
+                    >
+                      {t('search.next')}
+                    </Button>
+                  </Box>
                 </Box>
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 8 }}>
-              <OpenStreetProjectsMap 
-                locations={projectLocations} 
-                selectedId={filters.projectId} 
-                height={600} 
-                onSelectProject={handleProjectClick}
-              />
+              <Box sx={{ width: '100%', height: { xs: 360, sm: 480, md: 600 } }}>
+                <ProjectsMap
+                  projects={projects}
+                  highlightedProjectId={filters.projectId || null}
+                  onProjectSelect={(id) => id && handleProjectClick(id)}
+                />
+              </Box>
             </Grid>
           </Grid>
         ) : (

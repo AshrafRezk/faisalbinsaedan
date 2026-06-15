@@ -179,6 +179,7 @@ interface SalesforceProjectRecord {
   City__c?: string
   Province_Region__c?: string
   District__c?: string
+  Project_Type__c?: string
   Hero_Image_URL__c?: string
   Logo_URL__c?: string
   Available_Units__c?: number
@@ -417,18 +418,33 @@ function pickMediaFromAttachments(attachments: Array<{ title: string; fileExtens
 }
 
 // Projects
-export async function getProjects() {
-  const CACHE_KEY = 'binsaedan_projects_cache_v4'
+const DEFAULT_PROJECTS_PAGE_SIZE = 4
+
+export async function getProjects(options?: {
+  projectType?: string
+  page?: number
+  pageSize?: number
+}) {
+  const projectType = options?.projectType?.trim()
+  const page = options?.page
+  const pageSize = options?.pageSize ?? DEFAULT_PROJECTS_PAGE_SIZE
+  const isPaginated = typeof page === 'number' && page > 0
+
+  const CACHE_KEY = isPaginated
+    ? `binsaedan_projects_cache_v6_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
+    : projectType
+      ? `binsaedan_projects_cache_v5_${projectType.toLowerCase()}`
+      : 'binsaedan_projects_cache_v5'
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Check cache
   try {
     const cached = sessionStorage.getItem(CACHE_KEY)
     if (cached) {
-      const { timestamp, data } = JSON.parse(cached)
+      const { timestamp, data, totalCount, pagination } = JSON.parse(cached)
       if (Date.now() - timestamp < CACHE_TTL) {
         console.log('[Projects] Returning cached data')
-        return { success: true, data }
+        return { success: true, data, totalCount, pagination }
       }
     }
   } catch (e) {
@@ -441,26 +457,57 @@ export async function getProjects() {
     console.log('[Projects] Fetching projects from Salesforce...')
 
     // 1. Fetch Projects
-    const projectsQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c,
+    const whereClause = projectType
+      ? ` WHERE Project_Type__c = '${projectType.replace(/'/g, "\\'")}'`
+      : ''
+
+    let totalCount: number | undefined
+    if (isPaginated) {
+      const countResult = await salesforceQuery<Record<string, unknown>>(
+        `SELECT COUNT() FROM Project__c${whereClause}`
+      )
+      totalCount = countResult.totalSize ?? 0
+    }
+
+    const offset = isPaginated ? (page - 1) * pageSize : 0
+    const limitClause = isPaginated ? ` LIMIT ${pageSize} OFFSET ${offset}` : ''
+    const projectsQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c
-                          FROM Project__c 
-                          ORDER BY CreatedDate DESC`
+                          FROM Project__c${whereClause}
+                          ORDER BY CreatedDate DESC${limitClause}`
 
     const projectsResult = await salesforceQuery<SalesforceProjectRecord>(projectsQuery)
 
     const sfProjects = projectsResult.records || []
 
     if (sfProjects.length === 0) {
-      // Salesforce is the only data source; return empty list if no records.
+      const emptyPagination = isPaginated
+        ? {
+            page,
+            pageSize,
+            totalCount: totalCount ?? 0,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          }
+        : undefined
+
       sessionStorage.setItem(
         CACHE_KEY,
         JSON.stringify({
           timestamp: Date.now(),
           data: [],
+          totalCount: totalCount ?? 0,
+          pagination: emptyPagination,
         })
       )
-      return { success: true, data: [] }
+      return {
+        success: true,
+        data: [],
+        totalCount: totalCount ?? 0,
+        pagination: emptyPagination,
+      }
     }
 
     const projectIds = sfProjects.map((p) => p.Id)
@@ -496,6 +543,7 @@ export async function getProjects() {
         nameAr: p.Name,
         provinceRegion: p.Province_Region__c?.trim() || undefined,
         city: p.City__c?.trim() || undefined,
+        projectType: p.Project_Type__c?.trim() || undefined,
         location: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
         locationAr: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
         coverImageUrl: media.heroUrl || media.defaultUrl || p.Hero_Image_URL__c || p.Logo_URL__c || '',
@@ -519,18 +567,33 @@ export async function getProjects() {
 
     console.log('[Projects] ✅ Loaded from Salesforce:', mappedProjects.length)
 
+    const pagination = isPaginated
+      ? {
+          page,
+          pageSize,
+          totalCount: totalCount ?? mappedProjects.length,
+          totalPages: Math.ceil((totalCount ?? mappedProjects.length) / pageSize),
+          hasNextPage: page * pageSize < (totalCount ?? mappedProjects.length),
+          hasPreviousPage: page > 1,
+        }
+      : undefined
+
     // Cache success result
     sessionStorage.setItem(
       CACHE_KEY,
       JSON.stringify({
         timestamp: Date.now(),
         data: mappedProjects,
+        totalCount,
+        pagination,
       })
     )
 
     return {
       success: true,
       data: mappedProjects,
+      totalCount,
+      pagination,
     }
   } catch (error) {
     console.error('[Projects] ❌ Failed to load from Salesforce:', error)
@@ -714,7 +777,7 @@ export async function getProject(id: string) {
   console.log('[Project] Fetching project from Salesforce:', id)
 
   try {
-    const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c,
+    const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c
                           FROM Project__c 
@@ -752,6 +815,7 @@ export async function getProject(id: string) {
         id: p.Id,
         name: p.Name,
         nameAr: p.Name,
+        projectType: p.Project_Type__c?.trim() || undefined,
         location: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
         locationAr: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
         coverImageUrl: media.heroUrl || media.defaultUrl || p.Hero_Image_URL__c || p.Logo_URL__c || '',

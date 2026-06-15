@@ -6,6 +6,17 @@ import { useHomePageContent } from '../../contexts/HomePageContentContext'
 const IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800'
 
+const PROJECT_TYPE_BY_CARD_ID: Record<string, string> = {
+  residential: 'Residential',
+  commercial: 'Commercial',
+}
+
+function fieldCardLink(cardId: string, fallbackLink: string): string {
+  const projectType = PROJECT_TYPE_BY_CARD_ID[cardId]
+  if (!projectType) return fallbackLink
+  return `/search?view=projects&projectType=${encodeURIComponent(projectType)}`
+}
+
 export default function OurFieldsSection() {
   const { content, text } = useHomePageContent()
 
@@ -33,7 +44,9 @@ export default function OurFieldsSection() {
         </motion.div>
 
         <Grid container spacing={4}>
-          {content.ourFields.cards.map((field, index) => (
+          {content.ourFields.cards.map((field, index) => {
+            const cardLink = fieldCardLink(field.id, field.link)
+            return (
             <Grid size={{ xs: 12, md: 6 }} key={field.id}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -42,10 +55,18 @@ export default function OurFieldsSection() {
                 transition={{ duration: 0.5, delay: index * 0.2 }}
               >
                 <Box
+                  component={Link}
+                  to={cardLink}
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    '&:hover .field-read-more': {
+                      opacity: 0.8,
+                    },
                   }}
                 >
                   <Box
@@ -85,29 +106,27 @@ export default function OurFieldsSection() {
                   >
                     {text(field.description)}
                   </Typography>
-                  <Box
-                    component={Link}
-                    to={field.link}
+                  <Typography
+                    className="field-read-more"
+                    variant="body2"
+                    fontWeight={700}
+                    color="primary.main"
                     sx={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      fontWeight: 700,
-                      color: 'primary.main',
-                      textDecoration: 'none',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       fontSize: '0.85rem',
-                      '&:hover': {
-                        opacity: 0.8,
-                      },
+                      width: 'fit-content',
                     }}
                   >
                     {text(content.ourFields.readMoreLabel)}
-                  </Box>
+                  </Typography>
                 </Box>
               </motion.div>
             </Grid>
-          ))}
+            )
+          })}
         </Grid>
       </Container>
     </Box>

@@ -8,6 +8,8 @@ export interface Project {
   provinceRegion?: string;
   /** Salesforce City__c */
   city?: string;
+  /** Salesforce Project_Type__c — e.g. Residential, Commercial */
+  projectType?: string;
   location: string;
   locationAr: string;
   coverImageUrl: string;
@@ -121,8 +123,21 @@ export interface Lead {
   profile?: "Investor" | "Customer" | "Supplier";
   source: "PWA";
   interestedProjectId?: string;
+  /** Lead.Interested_Projects__c — project display name (picklist value) */
+  interestedProjectName?: string;
   interestedPhaseId?: string;
   interestedUnitId?: string;
+  company?: string;
+  /** Lead.Project__c — rental/commercial project lookup */
+  rentalProjectId?: string;
+  /** Lead.Rental_Budget__c */
+  rentalBudget?: number;
+  /** Lead.Number_of_Rooms__c */
+  numberOfRooms?: number;
+  /** Lead.Rental_Start_Date__c (YYYY-MM-DD) */
+  rentalStartDate?: string;
+  /** Lead.Rental_End_Date__c (YYYY-MM-DD) */
+  rentalEndDate?: string;
   message?: string;
   createdAt?: string;
 }

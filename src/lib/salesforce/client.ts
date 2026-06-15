@@ -7,6 +7,7 @@
 interface SalesforceQueryResult<T> {
   success: boolean
   records: T[]
+  totalSize?: number
   error?: string
 }
 
@@ -93,7 +94,7 @@ export interface SalesforceUnitSearchResponse {
 /**
  * Query Salesforce using SOQL via Netlify Function
  */
-export async function salesforceQuery<T>(soql: string): Promise<{ records: T[] }> {
+export async function salesforceQuery<T>(soql: string): Promise<{ records: T[]; totalSize?: number }> {
   console.log('[Salesforce Query] Executing SOQL via Netlify Function:', soql)
 
   try {
@@ -124,6 +125,7 @@ export async function salesforceQuery<T>(soql: string): Promise<{ records: T[] }
 
     return {
       records: result.records || [],
+      totalSize: result.totalSize,
     }
   } catch (error) {
     console.error('[Salesforce Query] ❌ ERROR:', error)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   TextField,
   Button,
@@ -18,28 +18,50 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { createLead } from '../../lib/api-client'
+import { createLead, getProjects } from '../../lib/api-client'
+import type { Project } from '../../lib/types'
 
 const getSchema = (t: (key: string) => string) =>
-  z.object({
-    name: z.string().min(2, t('registerInterest.firstNameRequired')),
-    companyName: z.string().optional(),
-    email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
-    phone: z.string().min(9, t('registerInterest.phoneInvalid')),
-    propertyType: z.string().min(1, t('contact.profileRequired')),
-    budget: z.string().min(1, t('contact.profileRequired')),
-    area: z.string().optional(),
-    message: z.string().optional(),
-  })
+  z
+    .object({
+      name: z.string().min(2, t('registerInterest.firstNameRequired')),
+      companyName: z.string().optional(),
+      email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
+      phone: z.string().min(9, t('registerInterest.phoneInvalid')),
+      projectId: z.string().optional(),
+      rentalBudget: z.string().optional(),
+      numberOfRooms: z.string().optional(),
+      rentalStartDate: z.string().optional(),
+      rentalEndDate: z.string().optional(),
+      propertyType: z.string().optional(),
+      message: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.rentalStartDate && data.rentalEndDate && data.rentalEndDate < data.rentalStartDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('commercial.invalidDateRange'),
+          path: ['rentalEndDate'],
+        })
+      }
+    })
 
 type FormData = z.infer<ReturnType<typeof getSchema>>
 
+function parseOptionalNumber(value?: string): number | undefined {
+  if (!value?.trim()) return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 export default function CommercialLeadForm() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isAr = i18n.language.startsWith('ar')
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
 
   const {
     register,
@@ -54,12 +76,29 @@ export default function CommercialLeadForm() {
       companyName: '',
       email: '',
       phone: '',
+      projectId: '',
+      rentalBudget: '',
+      numberOfRooms: '',
+      rentalStartDate: '',
+      rentalEndDate: '',
       propertyType: '',
-      budget: '',
-      area: '',
       message: '',
     },
   })
+
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const response = await getProjects()
+        if (response.success && response.data) {
+          setProjects(response.data)
+        }
+      } catch (err) {
+        console.error('Error loading projects for commercial form:', err)
+      }
+    }
+    loadProjects()
+  }, [])
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
@@ -70,23 +109,35 @@ export default function CommercialLeadForm() {
       const firstName = parts[0] || ''
       const lastName = parts.slice(1).join(' ') || firstName
 
+      const selectedProject = projects.find((p) => p.id === data.projectId)
+      const projectLabel = selectedProject
+        ? isAr
+          ? selectedProject.nameAr || selectedProject.name
+          : selectedProject.name
+        : ''
+
       const meta = [
-        `Lead Type: Commercial/Rental`,
+        'Lead Type: Commercial/Rental',
         data.companyName ? `Company: ${data.companyName}` : null,
-        `Property Type: ${data.propertyType}`,
-        `Budget: ${data.budget}`,
-        data.area ? `Required Area: ${data.area} sqm` : null,
+        data.propertyType ? `Property Type: ${data.propertyType}` : null,
+        projectLabel ? `Project: ${projectLabel}` : null,
       ].filter(Boolean)
-      
-      const message = `${data.message || 'Interested in commercial properties'}\n\n${meta.join('\n')}`
+
+      const message = `${data.message || 'Interested in commercial & rental properties'}\n\n${meta.join('\n')}`
 
       const response = await createLead({
-        profile: 'Customer', // Default to Customer or can be dynamically mapped
+        profile: 'Customer',
         firstName,
         lastName,
         phone: data.phone,
         email: data.email || '',
+        company: data.companyName || undefined,
         message,
+        rentalProjectId: data.projectId || undefined,
+        rentalBudget: parseOptionalNumber(data.rentalBudget),
+        numberOfRooms: parseOptionalNumber(data.numberOfRooms),
+        rentalStartDate: data.rentalStartDate || undefined,
+        rentalEndDate: data.rentalEndDate || undefined,
       })
 
       if (response.success) {
@@ -166,18 +217,19 @@ export default function CommercialLeadForm() {
 
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
-            name="propertyType"
+            name="projectId"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors.propertyType}>
-                <InputLabel>{t('commercial.propertyType')}</InputLabel>
-                <Select label={t('commercial.propertyType')} {...field}>
-                  <MenuItem value="office">{t('commercial.propertyOptions.office')}</MenuItem>
-                  <MenuItem value="retail">{t('commercial.propertyOptions.retail')}</MenuItem>
-                  <MenuItem value="warehouse">{t('commercial.propertyOptions.warehouse')}</MenuItem>
-                  <MenuItem value="other">{t('commercial.propertyOptions.other')}</MenuItem>
+              <FormControl fullWidth>
+                <InputLabel>{t('commercial.project')}</InputLabel>
+                <Select label={t('commercial.project')} {...field} value={field.value || ''}>
+                  <MenuItem value="">{t('search.options.allProjects')}</MenuItem>
+                  {projects.map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {isAr ? p.nameAr || p.name : p.name}
+                    </MenuItem>
+                  ))}
                 </Select>
-                {errors.propertyType?.message ? <FormHelperText>{errors.propertyType.message}</FormHelperText> : null}
               </FormControl>
             )}
           />
@@ -185,32 +237,70 @@ export default function CommercialLeadForm() {
 
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
-            name="budget"
+            name="propertyType"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors.budget}>
-                <InputLabel>{t('commercial.budget')}</InputLabel>
-                <Select label={t('commercial.budget')} {...field}>
-                  <MenuItem value="under100k">{t('commercial.budgetOptions.under100k')}</MenuItem>
-                  <MenuItem value="100kTo500k">{t('commercial.budgetOptions.100kTo500k')}</MenuItem>
-                  <MenuItem value="500kTo1m">{t('commercial.budgetOptions.500kTo1m')}</MenuItem>
-                  <MenuItem value="above1m">{t('commercial.budgetOptions.above1m')}</MenuItem>
+              <FormControl fullWidth>
+                <InputLabel>{t('commercial.propertyType')}</InputLabel>
+                <Select label={t('commercial.propertyType')} {...field} value={field.value || ''}>
+                  <MenuItem value="">{t('search.options.all')}</MenuItem>
+                  <MenuItem value="office">{t('commercial.propertyOptions.office')}</MenuItem>
+                  <MenuItem value="retail">{t('commercial.propertyOptions.retail')}</MenuItem>
+                  <MenuItem value="warehouse">{t('commercial.propertyOptions.warehouse')}</MenuItem>
+                  <MenuItem value="other">{t('commercial.propertyOptions.other')}</MenuItem>
                 </Select>
-                {errors.budget?.message ? <FormHelperText>{errors.budget.message}</FormHelperText> : null}
               </FormControl>
             )}
           />
         </Grid>
 
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
-            {...register('area')}
-            label={t('commercial.area')}
-            placeholder={t('commercial.areaPlaceholder')}
+            {...register('rentalBudget')}
+            label={t('commercial.rentalBudget')}
+            placeholder={t('commercial.rentalBudgetPlaceholder')}
             fullWidth
             type="number"
-            error={!!errors.area}
-            helperText={errors.area?.message}
+            inputProps={{ min: 0, step: 1000 }}
+            error={!!errors.rentalBudget}
+            helperText={errors.rentalBudget?.message}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            {...register('numberOfRooms')}
+            label={t('commercial.numberOfRooms')}
+            placeholder={t('commercial.numberOfRoomsPlaceholder')}
+            fullWidth
+            type="number"
+            inputProps={{ min: 0, step: 1 }}
+            error={!!errors.numberOfRooms}
+            helperText={errors.numberOfRooms?.message}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            {...register('rentalStartDate')}
+            label={t('commercial.rentalStartDate')}
+            fullWidth
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            error={!!errors.rentalStartDate}
+            helperText={errors.rentalStartDate?.message}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            {...register('rentalEndDate')}
+            label={t('commercial.rentalEndDate')}
+            fullWidth
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            error={!!errors.rentalEndDate}
+            helperText={errors.rentalEndDate?.message}
           />
         </Grid>
 

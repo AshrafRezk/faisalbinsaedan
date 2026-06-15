@@ -62,7 +62,7 @@ const getSchema = (t: (key: string) => string) =>
     region: z.string().optional(),
     city: z.string().optional(),
     project: z.string().optional(),
-    message: z.string().min(10, t('contact.message')),
+    message: z.string().trim().min(3, t('contact.messageTooShort')),
   })
 
 function buildEmptyDefaults(projectId?: string): FormData {
@@ -326,13 +326,13 @@ export default function LeadInterestForm({
       const selectedProject = effectiveProjectId ? projects.find((p) => p.id === effectiveProjectId) : undefined
       const projectLabel = selectedProject
         ? i18n.language.startsWith('ar')
-          ? selectedProject.nameAr
+          ? selectedProject.nameAr || selectedProject.name
           : selectedProject.name
-        : ''
+        : projectName || ''
       const meta = [
         data.region ? `Region: ${data.region}` : null,
         data.city ? `City: ${data.city}` : null,
-        effectiveProjectId && projectLabel ? `Project: ${projectLabel}` : null,
+        projectLabel ? `Project: ${projectLabel}` : null,
         unitNumber ? `Unit: ${unitNumber}` : null,
         unitId && !unitNumber ? `Unit ID: ${unitId}` : null,
       ].filter(Boolean)
@@ -346,7 +346,7 @@ export default function LeadInterestForm({
           phone: data.phone,
           email: data.email || '',
           message,
-          interestedProjectId: effectiveProjectId,
+          interestedProjectName: projectLabel || undefined,
           interestedPhaseId: phaseId,
           interestedUnitId: unitId,
         },

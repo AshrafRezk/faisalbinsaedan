@@ -1,26 +1,28 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { CircularProgress, Box } from '@mui/material'
 import { useAuthStore, useAppStore } from './lib/store'
 import { useFeatureSwitchStore } from './lib/store/feature-switch-store'
 import { getCurrentUser } from './lib/api-client'
 import { getFeatureSwitchesOnLoad } from './lib/featureSwitches'
 import Layout from './components/layout/Layout'
-import Home from './pages/Home'
-import Search from './pages/Search'
-import UnitDetails from './pages/UnitDetails'
-import ProjectDetails from './pages/ProjectDetails'
-import Login from './pages/Login'
-import Community from './pages/Community'
-import Contact from './pages/Contact'
-import CommercialRental from './pages/CommercialRental'
-import Offline from './pages/Offline'
-import ComingSoon from './pages/ComingSoon'
-import AboutUs from './pages/AboutUs'
-import Achievements from './pages/Achievements'
-import LatestReleases from './pages/LatestReleases'
-import News from './pages/News'
-import NewsArticle from './pages/NewsArticle'
-import CollaborationComingSoon from './pages/CollaborationComingSoon'
+
+const Home = lazy(() => import('./pages/Home'))
+const Search = lazy(() => import('./pages/Search'))
+const UnitDetails = lazy(() => import('./pages/UnitDetails'))
+const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
+const Login = lazy(() => import('./pages/Login'))
+const Community = lazy(() => import('./pages/Community'))
+const Contact = lazy(() => import('./pages/Contact'))
+const CommercialRental = lazy(() => import('./pages/CommercialRental'))
+const Offline = lazy(() => import('./pages/Offline'))
+const ComingSoon = lazy(() => import('./pages/ComingSoon'))
+const AboutUs = lazy(() => import('./pages/AboutUs'))
+const Achievements = lazy(() => import('./pages/Achievements'))
+const LatestReleases = lazy(() => import('./pages/LatestReleases'))
+const News = lazy(() => import('./pages/News'))
+const NewsArticle = lazy(() => import('./pages/NewsArticle'))
+const CollaborationComingSoon = lazy(() => import('./pages/CollaborationComingSoon'))
 import Toast from './components/ui/Toast'
 import { SiteContentProvider } from './contexts/SiteContentContext'
 
@@ -82,7 +84,20 @@ function App() {
     return () => {
       mounted = false
     }
-  }, [setAuth, setLoading])
+  }, [setAuth, setLoading, setFeatures])
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      useAppStore.getState().setInstallPrompt(e as any);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   if (!isReady) {
     return null; // Or a loading spinner

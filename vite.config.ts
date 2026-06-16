@@ -78,6 +78,17 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'mui-vendor': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          'framer-motion': ['framer-motion'],
+          'map-vendor': ['leaflet', 'react-leaflet'],
+          'pdf-vendor': ['pdfjs-dist']
+        }
+      }
+    }
   }
 })

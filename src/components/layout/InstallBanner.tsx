@@ -20,23 +20,14 @@ export default function InstallBanner() {
   useEffect(() => {
     if (isInstalled) return
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the default mini-infobar from appearing
-      e.preventDefault()
-      // Store the event for later use
-      setInstallPrompt(e as BeforeInstallPromptEvent)
-    }
-
     const handleAppInstalled = () => {
       setIsInstalled(true)
       setInstallPrompt(null)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [isInstalled, setInstallPrompt])

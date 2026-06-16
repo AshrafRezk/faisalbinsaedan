@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Box, Button, Typography, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
-import { Apple, Shop } from '@mui/icons-material'
+import { Box, Button, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Paper } from '@mui/material'
+import { Apple, Shop, IosShare, AddBox } from '@mui/icons-material'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../../lib/store'
 
@@ -80,15 +80,27 @@ export default function AppInstallButtons() {
       </Button>
 
       {/* iOS Instructions Modal */}
-      <Dialog open={iosModalOpen} onClose={() => setIosModalOpen(false)}>
-        <DialogTitle>{t('installBanner.iosInstallTitle', 'Install on iOS')}</DialogTitle>
+      <Dialog open={iosModalOpen} onClose={() => setIosModalOpen(false)} PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>{t('installBanner.iosInstallTitle', 'Install on iOS')}</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {t('installBanner.iosInstallBody', 'To install this app on your iPhone or iPad, tap the Share button at the bottom of Safari, then tap "Add to Home Screen".')}
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {t('installBanner.iosInstallBody', 'To install this app on your iPhone or iPad for a full-screen experience, follow these two simple steps:')}
           </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-            {/* Simple icon to represent the share button */}
-            <Box component="span" sx={{ fontSize: '2rem' }}>⬆️</Box>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Paper elevation={0} sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, border: '1px solid', borderColor: 'grey.200' }}>
+              <IosShare color="primary" />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                1. Tap the <strong>Share</strong> button at the bottom of Safari.
+              </Typography>
+            </Paper>
+            
+            <Paper elevation={0} sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, border: '1px solid', borderColor: 'grey.200' }}>
+              <AddBox color="primary" />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                2. Scroll down and tap <strong>Add to Home Screen</strong>.
+              </Typography>
+            </Paper>
           </Box>
         </DialogContent>
         <DialogActions>

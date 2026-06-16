@@ -83,7 +83,20 @@ function App() {
     return () => {
       mounted = false
     }
-  }, [setAuth, setLoading])
+  }, [setAuth, setLoading, setFeatures])
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      useAppStore.getState().setInstallPrompt(e as any);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   if (!isReady) {
     return null; // Or a loading spinner

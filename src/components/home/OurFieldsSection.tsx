@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 const FIELDS = [
   {
     id: 'residential',
-    image: '/projects/malfa/hero.jpg',
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800',
     titleKey: 'home.fields.residential.title',
     descKey: 'home.fields.residential.description',
     link: '/search?view=projects',

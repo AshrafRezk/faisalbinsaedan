@@ -33,49 +33,55 @@ export default function AppInstallButtons() {
     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
       <Button
         variant="contained"
-        startIcon={<Shop />}
         onClick={handleAndroidClick}
         sx={{
           bgcolor: '#000',
           color: '#fff',
           textTransform: 'none',
           borderRadius: 2,
-          px: 3,
+          px: 2.5,
           py: 1,
+          minWidth: '160px',
           '&:hover': { bgcolor: '#333' }
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.8, lineHeight: 1 }}>
-            {t('installBanner.getItOn', 'GET IT ON')}
-          </Typography>
-          <Typography variant="body1" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-            Google Play
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%', justifyContent: 'center' }}>
+          <Shop sx={{ fontSize: 32 }} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.8, lineHeight: 1, mb: 0.3 }}>
+              {t('installBanner.getItOn', 'GET IT ON')}
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 'bold', lineHeight: 1.1, fontSize: '1.05rem' }}>
+              Google Play
+            </Typography>
+          </Box>
         </Box>
       </Button>
 
       <Button
         variant="contained"
-        startIcon={<Apple />}
         onClick={handleIosClick}
         sx={{
           bgcolor: '#000',
           color: '#fff',
           textTransform: 'none',
           borderRadius: 2,
-          px: 3,
+          px: 2.5,
           py: 1,
+          minWidth: '160px',
           '&:hover': { bgcolor: '#333' }
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.8, lineHeight: 1 }}>
-            {t('installBanner.downloadOnThe', 'Download on the')}
-          </Typography>
-          <Typography variant="body1" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-            App Store
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%', justifyContent: 'center' }}>
+          <Apple sx={{ fontSize: 32 }} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.8, lineHeight: 1, mb: 0.3 }}>
+              {t('installBanner.downloadOnThe', 'Download on the')}
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 'bold', lineHeight: 1.1, fontSize: '1.05rem' }}>
+              App Store
+            </Typography>
+          </Box>
         </Box>
       </Button>
 

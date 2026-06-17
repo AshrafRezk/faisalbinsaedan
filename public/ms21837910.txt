@@ -1,0 +1,5 @@
+ {
+  "Description": "Domain ownership verification file for Microsoft 365 - place in the website root",
+  "Domain": "fbs.com.sa",
+  "Id": "dc4b820d-4f79-47fc-92e4-47f2dc64dda3"
+}

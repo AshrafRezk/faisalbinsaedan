@@ -29,3 +29,4 @@ dist-ssr
 # Environment variables (secrets)
 .env
 .env.*
+netlify/functions/salesforce-file.js

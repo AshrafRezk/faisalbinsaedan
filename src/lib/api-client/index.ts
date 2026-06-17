@@ -264,8 +264,26 @@ async function getProjectNotesAndAttachments(projectId: string) {
   return { notes, attachments }
 }
 
+function isSalesforceNoteVersion(v: SalesforceContentVersionRecord): boolean {
+  const ext = (v.FileExtension || '').toLowerCase()
+  const type = (v.FileType || '').toUpperCase()
+  return ext === 'snote' || type === 'SNOTE'
+}
+
+function salesforceFileProxyUrl(versionId: string): string {
+  return `/.netlify/functions/salesforce-file?versionId=${encodeURIComponent(versionId)}`
+}
+
+function resolveProjectLogoUrl(
+  media: { logoUrl?: string } | undefined,
+  salesforceLogoUrl?: string | null
+): string {
+  return media?.logoUrl || salesforceLogoUrl?.trim() || ''
+}
+
 async function getProjectsMedia(projectIds: string[]) {
-  if (projectIds.length === 0) return new Map<string, { heroUrl?: string; logoUrl?: string; defaultUrl?: string; videoUrl?: string }>()
+  type ProjectMedia = ReturnType<typeof pickMediaFromAttachments>
+  if (projectIds.length === 0) return new Map<string, ProjectMedia>()
 
   const idsSoql = projectIds.map((id) => `'${id}'`).join(',')
   const linksQuery = `SELECT ContentDocumentId, LinkedEntityId
@@ -275,7 +293,7 @@ async function getProjectsMedia(projectIds: string[]) {
   const links = linksResult.records || []
 
   const contentDocumentIds = Array.from(new Set(links.map((l) => l.ContentDocumentId).filter(Boolean)))
-  if (contentDocumentIds.length === 0) return new Map<string, { heroUrl?: string; logoUrl?: string; defaultUrl?: string; videoUrl?: string }>()
+  if (contentDocumentIds.length === 0) return new Map<string, ProjectMedia>()
 
   const docIdsSoql = contentDocumentIds.map((id) => `'${id}'`).join(',')
   const versionsQuery = `SELECT Id, Title, FileExtension, FileType, ContentDocumentId, CreatedDate
@@ -288,70 +306,31 @@ async function getProjectsMedia(projectIds: string[]) {
 
   const versionByDocId = new Map<string, SalesforceContentVersionRecord>()
   for (const v of versions) {
-    // Query is ORDER BY CreatedDate DESC, so first we see is newest
     if (!versionByDocId.has(v.ContentDocumentId)) versionByDocId.set(v.ContentDocumentId, v)
   }
 
-  const isMedia = (ext?: string) => {
-    const e = (ext || '').toLowerCase()
-    return e === 'png' || e === 'jpg' || e === 'jpeg' || e === 'webp' || e === 'mp4' || e === 'webm' || e === 'mov'
-  }
-
-  const mediaByProjectId = new Map<string, { 
-    heroUrl?: string; 
-    logoUrl?: string; 
-    defaultUrl?: string; 
-    videoUrl?: string; 
-    topPlanUrl?: string;
-    brochureUrl?: string;
-    gallery?: Array<{ url: string; tagEn: string; tagAr: string; }>;
-  }>()
+  const versionsByProjectId = new Map<string, SalesforceContentVersionRecord[]>()
   for (const link of links) {
     const v = versionByDocId.get(link.ContentDocumentId)
-    if (!v) continue
-    if (!isMedia(v.FileExtension)) continue
+    if (!v || isSalesforceNoteVersion(v)) continue
 
-    const projectId = link.LinkedEntityId;
-    if (!mediaByProjectId.has(projectId)) {
-      mediaByProjectId.set(projectId, { gallery: [] })
-    }
-    const media = mediaByProjectId.get(projectId)!;
+    const projectId = link.LinkedEntityId
+    const bucket = versionsByProjectId.get(projectId) || []
+    bucket.push(v)
+    versionsByProjectId.set(projectId, bucket)
+  }
 
-    const title = (v.Title || '').toLowerCase()
-    const url = `/.netlify/functions/salesforce-file?versionId=${encodeURIComponent(v.Id)}`
-
-    if (title.includes('project-logo') || title.includes('project logo')) {
-      if (!media.logoUrl) media.logoUrl = url;
-    } else if (title.includes('project-hero') || title.includes('project hero')) {
-      if (!media.heroUrl) media.heroUrl = url;
-    } else if (title.includes('project-video-advert') || title.includes('video advert')) {
-      if (!media.videoUrl) media.videoUrl = url;
-    } else if (title.includes('project-top-plan') || title.includes('project top plan')) {
-      if (!media.topPlanUrl) media.topPlanUrl = url;
-    } else if (title.includes('project-brochure') || title.includes('project brochure')) {
-      if (!media.brochureUrl) media.brochureUrl = url;
-    } else if (title.includes('project-gallery') || title.includes('project gallery')) {
-      let tagEn = 'Inspiring Interiors';
-      let tagAr = 'مساحات داخلية تلهمك';
-      
-      if (title.includes('exterior')) {
-        tagEn = 'Amazing Exteriors';
-        tagAr = 'واجهات تأسر الأبصار';
-      } else if (title.includes('kitchen')) {
-        tagEn = 'A Kitchen that Feels Like Home';
-        tagAr = 'مطبخ ينبض بالدفء والسكينة';
-      } else if (title.includes('reception')) {
-        tagEn = 'Welcoming Elegance';
-        tagAr = 'فخامة الاستقبال وحفاوة اللقاء';
-      } else if (title.includes('bedroom')) {
-        tagEn = 'Serene Sanctuaries';
-        tagAr = 'ملاذ السكينة والهدوء';
-      }
-      
-      media.gallery!.push({ url, tagEn, tagAr });
-    } else if (!isModelAttachmentTitle(v.Title || '')) {
-      if (!media.defaultUrl) media.defaultUrl = url;
-    }
+  const mediaByProjectId = new Map<string, ProjectMedia>()
+  for (const [projectId, projectVersions] of versionsByProjectId) {
+    projectVersions.sort(
+      (a, b) => Date.parse(b.CreatedDate || '') - Date.parse(a.CreatedDate || '')
+    )
+    const attachments = projectVersions.map((v) => ({
+      title: v.Title || '',
+      fileExtension: v.FileExtension,
+      url: salesforceFileProxyUrl(v.Id),
+    }))
+    mediaByProjectId.set(projectId, pickMediaFromAttachments(attachments))
   }
 
   return mediaByProjectId
@@ -431,10 +410,10 @@ export async function getProjects(options?: {
   const isPaginated = typeof page === 'number' && page > 0
 
   const CACHE_KEY = isPaginated
-    ? `binsaedan_projects_cache_v6_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
+    ? `binsaedan_projects_cache_v7_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
     : projectType
-      ? `binsaedan_projects_cache_v5_${projectType.toLowerCase()}`
-      : 'binsaedan_projects_cache_v5'
+      ? `binsaedan_projects_cache_v7_${projectType.toLowerCase()}`
+      : 'binsaedan_projects_cache_v7'
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Check cache
@@ -552,7 +531,7 @@ export async function getProjects(options?: {
         mapCentroidLat: typeof p.Map_Centroid_Lat__c === 'number' ? p.Map_Centroid_Lat__c : undefined,
         mapCentroidLng: typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined,
         mapGeometryJson,
-        logoUrl: media.logoUrl || p.Logo_URL__c || '',
+        logoUrl: resolveProjectLogoUrl(media, p.Logo_URL__c),
         topPlanUrl: media.topPlanUrl,
         gallery: media.gallery || [],
         phases: [],
@@ -824,7 +803,7 @@ export async function getProject(id: string) {
         mapCentroidLat,
         mapCentroidLng,
         mapGeometryJson,
-        logoUrl: media.logoUrl || p.Logo_URL__c || '',
+        logoUrl: resolveProjectLogoUrl(media, p.Logo_URL__c),
         topPlanUrl: media.topPlanUrl,
         brochureUrl: media.brochureUrl,
         gallery: media.gallery,

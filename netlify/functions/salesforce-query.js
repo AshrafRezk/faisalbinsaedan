@@ -39,7 +39,7 @@ exports.handler = async (event) => {
     }
 
     // Step 1: Get access token
-    let accessToken;
+    let accessToken; 
     let tokenInstanceUrl = instanceUrl;
 
     try {

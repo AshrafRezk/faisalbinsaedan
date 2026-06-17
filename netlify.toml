@@ -7,7 +7,13 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# SPA redirects - all routes go to index.html
+# Microsoft 365 domain verification for fbs.com.sa (must stay at site root)
+[[headers]]
+  for = "/ms21837910.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+
+# SPA fallback — static files in dist/ (e.g. ms21837910.txt, robots.txt) are served first
 [[redirects]]
   from = "/*"
   to = "/index.html"

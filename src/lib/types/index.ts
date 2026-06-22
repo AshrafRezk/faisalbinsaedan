@@ -102,6 +102,8 @@ export interface Unit {
   descriptionAr?: string;
   projectName?: string;
   projectNameAr?: string;
+  /** Derived from parent project Project_Type__c — e.g. Residential, Commercial */
+  propertyType?: string;
   /** From `Project__r` on unit query — used when lead form can’t match `getProjects()` */
   projectProvinceRegion?: string;
   projectCity?: string;
@@ -184,6 +186,7 @@ export interface UnitFilters {
   model?: string;
   minPrice?: number;
   maxPrice?: number;
+  bedrooms?: number;
   minBedrooms?: number;
   maxBedrooms?: number;
   minBathrooms?: number;
@@ -194,6 +197,8 @@ export interface UnitFilters {
   maxBUA?: number;
   status?: Unit["status"];
   usageType?: string;
+  /** Salesforce Project_Type__c on parent project — Residential | Commercial */
+  projectType?: string;
   finishing?: string;
   city?: string;
   province?: string;

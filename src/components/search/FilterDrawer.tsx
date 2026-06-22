@@ -27,6 +27,7 @@ export default function FilterDrawer() {
 
   const [localFilters, setLocalFilters] = useState({
     projectId: filters.projectId || '',
+    projectType: filters.projectType || '',
     model: filters.model || '',
     bedrooms: filters.bedrooms?.toString() || '',
     priceRange: '',
@@ -46,6 +47,7 @@ export default function FilterDrawer() {
   useEffect(() => {
     setLocalFilters({
       projectId: filters.projectId || '',
+      projectType: filters.projectType || '',
       model: filters.model || '',
       bedrooms: filters.bedrooms?.toString() || '',
       priceRange: '',
@@ -81,6 +83,12 @@ export default function FilterDrawer() {
     ...UNIT_MODEL_OPTIONS.map((m) => ({ value: m, label: m })),
   ]
 
+  const propertyTypeOptions = [
+    { value: '', label: t('search.options.all') },
+    { value: 'Residential', label: t('unit.residential') },
+    { value: 'Commercial', label: t('unit.commercial') },
+  ]
+
   const handleApply = () => {
     const [minPrice, maxPrice] = localFilters.priceRange
       ? localFilters.priceRange.split('-').map(Number)
@@ -88,6 +96,7 @@ export default function FilterDrawer() {
 
     setFilters({
       projectId: localFilters.projectId || undefined,
+      projectType: localFilters.projectType || undefined,
       model: localFilters.model || undefined,
       bedrooms: localFilters.bedrooms ? parseInt(localFilters.bedrooms) : undefined,
       minPrice,
@@ -101,6 +110,7 @@ export default function FilterDrawer() {
   const handleReset = () => {
     setLocalFilters({
       projectId: '',
+      projectType: '',
       model: '',
       bedrooms: '',
       priceRange: '',
@@ -111,6 +121,7 @@ export default function FilterDrawer() {
 
   const hasActiveFilters =
     localFilters.projectId !== '' ||
+    localFilters.projectType !== '' ||
     localFilters.model !== '' ||
     localFilters.bedrooms !== '' ||
     localFilters.priceRange !== '' ||
@@ -184,6 +195,20 @@ export default function FilterDrawer() {
           >
             {projectOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label={t('search.propertyType')}
+            value={localFilters.projectType}
+            onChange={(e) => setLocalFilters({ ...localFilters, projectType: e.target.value })}
+            fullWidth
+          >
+            {propertyTypeOptions.map((option) => (
+              <MenuItem key={option.value || 'all'} value={option.value}>
                 {option.label}
               </MenuItem>
             ))}

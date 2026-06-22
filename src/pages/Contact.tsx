@@ -12,7 +12,7 @@ import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Phone, Mail, MapPin, Clock, Instagram, Linkedin } from 'lucide-react'
-import { getOfficeMapUrl } from '../lib/api-client'
+import { getOfficeMapUrl, getOfficeLocations } from '../lib/api-client'
 import LeadInterestForm from '../components/home/LeadInterestForm'
 import { useSiteContent } from '../contexts/SiteContentContext'
 
@@ -70,70 +70,21 @@ interface OfficeLocation {
   project: string
   projectEn: string
   url: string
-  coords: string
+  coords?: string
   dirUrl: string
   isHq?: boolean
 }
 
-const salesOffices: OfficeLocation[] = [
-  {
-    project: 'الموقع الرئيسي (الإدارة العامة)',
-    projectEn: 'Headquarters (HQ Office)',
-    url: 'https://www.google.com/maps/place/FBS/@24.767214,46.7086031,132m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3e2efd556f038b85:0x3a43523caa30801e!2sFBS!8m2!3d24.7673186!4d46.7086468!16s%2Fg%2F11ygn5c_z0!3m5!1s0x3e2efd556f038b85:0x3a43523caa30801e!8m2!3d24.7673186!4d46.7086468!16s%2Fg%2F11ygn5c_z0?hl=en-US&entry=ttu',
-    coords: '24.76734267323662,46.70865492367602',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=24.76734267323662,46.70865492367602',
-    isHq: true,
-  },
-  {
-    project: 'نزل خيالا - جدة',
-    projectEn: 'Nazal Khayala - Jeddah',
-    url: 'https://maps.app.goo.gl/iWaAkHtoVkWqRmcn8',
-    coords: '21.6488125,39.1125625',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=21.6488125,39.1125625'
-  },
-  {
-    project: 'ملفى الحوية',
-    projectEn: 'Malfa Al Hawiah',
-    url: 'https://maps.app.goo.gl/9Fv2dzxvouxztJNr5',
-    coords: '21.2790496,40.4447283',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=21.2790496,40.4447283'
-  },
-  {
-    project: 'ملفى جدة',
-    projectEn: 'Malfa Jeddah',
-    url: 'https://maps.app.goo.gl/Wbh3rDku8vm2tF1r8',
-    coords: '21.3508125,39.2610625',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=21.3508125,39.2610625'
-  },
-  {
-    project: 'ملفى تبوك هيلز',
-    projectEn: 'Malfa Tabuk Hills',
-    url: 'https://maps.app.goo.gl/FPhqhKgWYDAQBZnr9',
-    coords: '28.4606462,36.5198903',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=28.4606462,36.5198903'
-  },
-  {
-    project: 'ملفى الاصالة',
-    projectEn: 'Malfa Al Asalah',
-    url: 'https://maps.app.goo.gl/crzBe21cvioUXecx7',
-    coords: '24.4844205,46.7192966',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=24.4844205,46.7192966'
-  },
-  {
-    project: 'ملفى المكيمن 1',
-    projectEn: 'Malfa Al Mukeemen 1',
-    url: 'https://maps.app.goo.gl/wVZVVm7PxxDvxrgD8',
-    coords: '24.4568125,39.5465625',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=24.4568125,39.5465625'
-  },
-  {
-    project: 'ملفى المكيمن 2',
-    projectEn: 'Malfa Al Mukeemen 2',
-    url: 'https://maps.app.goo.gl/2tBKQmzahU8ehRaa7',
-    coords: '24.4662446,39.6652025',
-    dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=24.4662446,39.6652025'
-  },
-]
+// Headquarters is hard-coded: it is not a Project__c record. Every other office
+// is loaded from Salesforce (Project__c.Office_Location__c) at runtime.
+const hqOffice: OfficeLocation = {
+  project: 'الموقع الرئيسي (الإدارة العامة)',
+  projectEn: 'Headquarters (HQ Office)',
+  url: 'https://www.google.com/maps/place/FBS/@24.767214,46.7086031,132m/data=!3m1!1e3!4m14!1m7!3m6!1s0x3e2efd556f038b85:0x3a43523caa30801e!2sFBS!8m2!3d24.7673186!4d46.7086468!16s%2Fg%2F11ygn5c_z0!3m5!1s0x3e2efd556f038b85:0x3a43523caa30801e!8m2!3d24.7673186!4d46.7086468!16s%2Fg%2F11ygn5c_z0?hl=en-US&entry=ttu',
+  coords: '24.76734267323662,46.70865492367602',
+  dirUrl: 'https://www.google.com/maps/dir/?api=1&destination=24.76734267323662,46.70865492367602',
+  isHq: true,
+}
 
 export default function Contact() {
   const { t, i18n } = useTranslation()
@@ -143,10 +94,24 @@ export default function Contact() {
   const [mapUrl, setMapUrl] = useState<string | null>(null)
   const [mapMetaKeywords, setMapMetaKeywords] = useState<string | undefined>(undefined)
   const [isLoadingMap, setIsLoadingMap] = useState(true)
-  const [activeLocation, setActiveLocation] = useState<OfficeLocation>(salesOffices[0])
+  const [offices, setOffices] = useState<OfficeLocation[]>([hqOffice])
+  const [activeLocation, setActiveLocation] = useState<OfficeLocation>(hqOffice)
 
   const getEmbedUrl = () => {
-    return `https://maps.google.com/maps?q=${activeLocation.coords}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+    if (!activeLocation) return ''
+    // A maps.app.goo.gl / place link can't be framed directly (Google blocks it),
+    // so pick the best embeddable source for the selected office:
+    // 1) an actual Google "embed" URL if the admin pasted one,
+    // 2) the project's map centroid coordinates (exact pin),
+    // 3) a search by project name as a last resort so the map still shows something.
+    const url = activeLocation.url || ''
+    if (/google\.[^/]+\/maps\/embed/i.test(url) || /[?&]output=embed/i.test(url)) {
+      return url
+    }
+    if (activeLocation.coords) {
+      return `https://maps.google.com/maps?q=${activeLocation.coords}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+    }
+    return `https://maps.google.com/maps?q=${encodeURIComponent(activeLocation.project)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
   }
 
   useEffect(() => {
@@ -163,6 +128,25 @@ export default function Contact() {
       }
     }
     fetchMapUrl()
+  }, [])
+
+  useEffect(() => {
+    const fetchOffices = async () => {
+      try {
+        const records = await getOfficeLocations()
+        const sfOffices: OfficeLocation[] = records.map((r) => ({
+          project: r.name,
+          projectEn: r.name,
+          url: r.url,
+          coords: r.coords,
+          dirUrl: r.dirUrl,
+        }))
+        setOffices([hqOffice, ...sfOffices])
+      } catch (error) {
+        console.error('Failed to fetch office locations:', error)
+      }
+    }
+    fetchOffices()
   }, [])
 
   useEffect(() => {
@@ -431,7 +415,7 @@ export default function Contact() {
                     <MapPin size={20} color="#1a365d" />
                   </Box>
                   <Box sx={{ flexGrow: 1, minHeight: 400, position: 'relative', bgcolor: 'grey.50' }}>
-                    {isLoadingMap && activeLocation.isHq ? (
+                    {(isLoadingMap && activeLocation.isHq) || !getEmbedUrl() ? (
                       <Box
                         sx={{
                           position: 'absolute',
@@ -467,7 +451,7 @@ export default function Contact() {
                   <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'center', bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
                     <Box
                       component="a"
-                      href={activeLocation.url}
+                      href={activeLocation?.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{
@@ -513,8 +497,8 @@ export default function Contact() {
                     <MapPin size={20} color="#1a365d" />
                   </Box>
                   <Box sx={{ flexGrow: 1, maxHeight: 440, overflowY: 'auto' }}>
-                    {salesOffices.map((office, idx) => {
-                      const isActive = activeLocation.coords === office.coords
+                    {offices.map((office, idx) => {
+                      const isActive = activeLocation?.url === office.url
                       return (
                         <Box
                           key={idx}
@@ -527,7 +511,7 @@ export default function Contact() {
                             justifyContent: 'space-between',
                             px: 3,
                             py: 2.2,
-                            borderBottom: idx === salesOffices.length - 1 ? 0 : 1,
+                            borderBottom: idx === offices.length - 1 ? 0 : 1,
                             borderColor: 'divider',
                             cursor: 'pointer',
                             color: 'text.primary',

@@ -186,6 +186,7 @@ interface SalesforceProjectRecord {
   Map_Centroid_Lat__c?: number
   Map_Centroid_Lng__c?: number
   Map_Geometry_JSON__c?: string
+  Office_Location__c?: string
 }
 
 const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
@@ -1107,6 +1108,7 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
     images: sfUnit.images,
     unitImage: sfUnit.unitImage,
     projectName: sfUnit.project?.name,
+    propertyType: sfUnit.project?.projectType,
     phaseName: sfUnit.phase?.name,
     buildingName: sfUnit.building?.name,
     blockName: sfUnit.block?.name,
@@ -1605,6 +1607,60 @@ export async function getOfficeMapUrl(): Promise<{ mapUrl: string | null; metaKe
   } catch (error) {
     console.error('[Office Map] ❌ ERROR fetching from Salesforce:', error)
     return { mapUrl: null }
+  }
+}
+
+export interface OfficeLocationRecord {
+  id: string
+  name: string
+  url: string
+  coords?: string
+  dirUrl: string
+}
+
+// Office_Location__c is entered by hand in the Admin Console, so it may be
+// missing a scheme ("maps.app.goo.gl/...") or have a typo'd one ("htpps://").
+// Normalize any leading scheme (or none) to https:// so links render.
+function normalizeUrl(raw: string): string {
+  const schemeMatch = raw.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//)
+  return schemeMatch ? `https://${raw.slice(schemeMatch[0].length)}` : `https://${raw}`
+}
+
+/**
+ * Fetch per-project office locations from Salesforce.
+ * Source: Project__c.Office_Location__c (URL set in the Admin Console).
+ * Coordinates come from the project map centroid when available.
+ */
+export async function getOfficeLocations(): Promise<OfficeLocationRecord[]> {
+  try {
+    // Office_Location__c is a Long Text Area (holds full Google embed URLs), which
+    // can't be used in a SOQL WHERE clause — so fetch all and filter in JS below.
+    const soql = `SELECT Id, Name, Office_Location__c, Map_Centroid_Lat__c, Map_Centroid_Lng__c
+                  FROM Project__c
+                  ORDER BY Name`
+    const result = await salesforceQuery<SalesforceProjectRecord>(soql)
+    if (!result.records || result.records.length === 0) return []
+
+    return result.records
+      .filter((p) => (p.Office_Location__c || '').trim().length > 0)
+      .map((p) => {
+        const url = normalizeUrl((p.Office_Location__c as string).trim())
+        const hasCoords =
+          typeof p.Map_Centroid_Lat__c === 'number' && typeof p.Map_Centroid_Lng__c === 'number'
+        const coords = hasCoords ? `${p.Map_Centroid_Lat__c},${p.Map_Centroid_Lng__c}` : undefined
+        return {
+          id: p.Id,
+          name: p.Name,
+          url,
+          coords,
+          dirUrl: coords
+            ? `https://www.google.com/maps/dir/?api=1&destination=${coords}`
+            : url,
+        }
+      })
+  } catch (error) {
+    console.error('[Office Locations] Failed to fetch from Salesforce:', error)
+    return []
   }
 }
 

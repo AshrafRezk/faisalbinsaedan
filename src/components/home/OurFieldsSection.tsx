@@ -6,15 +6,15 @@ import { useHomePageContent } from '../../contexts/HomePageContentContext'
 const IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800'
 
-const PROJECT_TYPE_BY_CARD_ID: Record<string, string> = {
+const PROPERTY_TYPE_BY_CARD_ID: Record<string, string> = {
   residential: 'Residential',
   commercial: 'Commercial',
 }
 
 function fieldCardLink(cardId: string, fallbackLink: string): string {
-  const projectType = PROJECT_TYPE_BY_CARD_ID[cardId]
-  if (!projectType) return fallbackLink
-  return `/search?view=projects&projectType=${encodeURIComponent(projectType)}`
+  const propertyType = PROPERTY_TYPE_BY_CARD_ID[cardId]
+  if (!propertyType) return fallbackLink
+  return `/search?projectType=${encodeURIComponent(propertyType)}`
 }
 
 export default function OurFieldsSection() {

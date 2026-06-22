@@ -88,7 +88,3 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
   }
 };
-
-export const config = {
-  path: "/.netlify/functions/salesforce-file"
-};

@@ -53,12 +53,18 @@ export default function Search() {
   // Set initial filter and view from URL params
   useEffect(() => {
     const projectId = searchParams.get('projectId')
+    const projectType = searchParams.get('projectType')
     const view = searchParams.get('view')
     if (view === 'projects') {
       setViewMode('projects')
     }
-    if (projectId) {
-      setFilters({ ...filters, projectId })
+    if (projectId || projectType) {
+      setFilters({
+        ...filters,
+        ...(projectId ? { projectId } : {}),
+        ...(projectType ? { projectType } : {}),
+        page: 1,
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])

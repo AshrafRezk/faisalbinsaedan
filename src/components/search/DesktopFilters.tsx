@@ -53,6 +53,12 @@ export default function DesktopFilters() {
     ...UNIT_MODEL_OPTIONS.map((m) => ({ value: m, label: m })),
   ]
 
+  const propertyTypeOptions = [
+    { value: '', label: t('search.options.all') },
+    { value: 'Residential', label: t('unit.residential') },
+    { value: 'Commercial', label: t('unit.commercial') },
+  ]
+
   const hasActiveFilters = Object.entries(filters).some(
     ([key, value]) =>
       value !== undefined && value !== false && key !== 'page' && key !== 'pageSize'
@@ -100,6 +106,26 @@ export default function DesktopFilters() {
           >
             {projectOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label={t('search.propertyType')}
+            value={filters.projectType || ''}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                projectType: e.target.value || undefined,
+                page: 1,
+              })
+            }
+            fullWidth
+          >
+            {propertyTypeOptions.map((option) => (
+              <MenuItem key={option.value || 'all'} value={option.value}>
                 {option.label}
               </MenuItem>
             ))}

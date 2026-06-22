@@ -59,6 +59,7 @@ export interface SalesforceUnitDTO {
     name: string;
     city: string;
     province: string;
+    projectType?: string;
   };
   phase?: {
     id: string;

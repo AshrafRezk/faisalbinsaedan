@@ -39,6 +39,10 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
     Sold: t('unit.sold'),
   }
 
+  const propertyType = unit.propertyType?.toLowerCase()
+  const isCommercial = propertyType === 'commercial'
+  const isResidential = propertyType === 'residential'
+
   const imageSection = (
     <Box
       sx={{
@@ -64,8 +68,15 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
       <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 2 }}>
         <SubsidyBadges eligible={unit.eligibleForSubsidies} size="large" />
       </Box>
-      <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 0.5, zIndex: 2 }}>
+      <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 0.5, zIndex: 2 }}>
         <FavoriteButton unitId={unit.id} size="small" />
+        {(isResidential || isCommercial) && (
+          <Chip
+            label={isCommercial ? t('unit.commercial') : t('unit.residential')}
+            color={isCommercial ? 'secondary' : 'primary'}
+            size="small"
+          />
+        )}
         {unit.usageType === 'Rental' && (
           <Chip
             label={i18n.language.startsWith('ar') ? 'تأجير' : 'Rental'}

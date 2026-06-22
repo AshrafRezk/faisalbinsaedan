@@ -76,11 +76,11 @@ export default function AboutProjectsSection() {
               cursor: 'pointer',
               transition: 'all 0.25s ease-in-out',
               border: '2px solid',
-              borderColor: isActive ? 'secondary.main' : 'transparent',
-              boxShadow: isActive ? '0 0 16px rgba(201, 162, 39, 0.4)' : 1,
+              borderColor: isActive ? 'primary.main' : 'transparent',
+              boxShadow: isActive ? '0 0 16px rgba(26, 54, 93, 0.4)' : 1,
               '&:hover': {
                 transform: 'translateY(-4px)',
-                boxShadow: isActive ? '0 4px 20px rgba(201, 162, 39, 0.5)' : 8,
+                boxShadow: isActive ? '0 4px 20px rgba(26, 54, 93, 0.5)' : 8,
               },
             }}
           >
@@ -159,11 +159,11 @@ export default function AboutProjectsSection() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         mt: 0.75,
-                        color: 'secondary.main',
+                        color: 'primary.main',
                         fontSize: '0.72rem',
                         textTransform: 'uppercase',
                         borderBottom: '2px solid',
-                        borderColor: 'secondary.main',
+                        borderColor: 'primary.main',
                         pb: 0.2,
                         width: 'fit-content'
                       }}

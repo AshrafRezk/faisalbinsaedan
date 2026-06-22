@@ -8,8 +8,8 @@
     "contact": "Contact Us",
     "support": "Support",
     "latestReleases": "Latest Releases",
-    "ourNews": "Our News",
-    "news": "Our News",
+    "ourNews": "Blogs",
+    "news": "Blogs",
     "login": "Login",
     "logout": "Logout",
     "back": "Back",
@@ -557,7 +557,14 @@
     "searchKeywords": "Search keywords",
     "all": "All",
     "select": "Select",
-    "empty": "No news articles found."
+    "empty": "No news articles found.",
+    "blogTitle": "Blog",
+    "blogSubtitle": "Insights, market updates, and stories from Faisal Bin Saedan.",
+    "continueReading": "Continue reading",
+    "categories": "Categories",
+    "recentPosts": "Recent Posts",
+    "allCategories": "All Posts",
+    "badge": "Blog"
   },
   "chatbot": {
     "greeting": "Welcome to Faisal Bin Saedan! I'm Sara, your digital assistant. How can I help you today?",

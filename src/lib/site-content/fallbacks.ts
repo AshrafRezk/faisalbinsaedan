@@ -9,7 +9,7 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   contact: { en: 'Contact Us', ar: 'تواصل معنا' },
   support: { en: 'Support', ar: 'الدعم' },
   latestReleases: { en: 'Latest Releases', ar: 'احدث اصداراتنا' },
-  ourNews: { en: 'Our News', ar: 'اخبارنا' },
+  ourNews: { en: 'Blogs', ar: 'المدوّنة' },
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },
   commercial: { en: 'Commercial & Rental', ar: 'التجاري والتأجير' },

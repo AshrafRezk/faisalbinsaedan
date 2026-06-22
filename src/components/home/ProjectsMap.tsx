@@ -55,7 +55,7 @@ function createMapPinIcon(fill: string) {
 }
 
 const availablePinIcon = createMapPinIcon('#223559') // Brand navy blue
-const highlightedPinIcon = createMapPinIcon('#c9a227') // Premium gold active highlight
+const highlightedPinIcon = createMapPinIcon('#2c5282') // Brand blue active highlight
 const soldOutPinIcon = createMapPinIcon('#6b7280')
 
 function getProjectPinIcon(project: ProjectWithAvailability, isHighlighted: boolean) {
@@ -450,10 +450,10 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
               key={`${idx}-${rIdx}`}
               positions={ring}
               pathOptions={{
-                color: item.isHighlighted ? '#c9a227' : '#e91e63',
+                color: item.isHighlighted ? '#2c5282' : '#e91e63',
                 weight: item.isHighlighted ? 4.0 : (item.isSelected ? 2.5 : 1.5),
                 dashArray: item.isHighlighted ? '0' : '5, 5',
-                fillColor: item.isHighlighted ? '#c9a227' : '#1b5e20',
+                fillColor: item.isHighlighted ? '#2c5282' : '#1b5e20',
                 fillOpacity: item.isHighlighted ? 0.5 : (item.isSelected ? 0.35 : 0.15),
               }}
             />

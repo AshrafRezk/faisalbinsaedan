@@ -120,52 +120,51 @@ function App() {
   }
 
   return (
-    <MaintenanceGate>
-
-<SiteContentProvider>
-      <Suspense fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      }>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            {getFeature('Show_Home_Page__c', true) && <Route index element={<Home />} />}
-            <Route path="search" element={<Search />} />
-            <Route path="project/:id" element={<ProjectDetails />} />
-            <Route path="unit/:id" element={<UnitDetails />} />
-            {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
-            <Route path="commercial-rental" element={<CommercialRental />} />
-            {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
-            {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
-            {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}
-            {getFeature('Show_Our_News_Page__c', true) && (
-              <>
-                <Route path="news" element={<News />} />
-                <Route path="news/:id" element={<NewsArticle />} />
-                <Route path="our-news" element={<Navigate to="/news" replace />} />
-              </>
-            )}
-            <Route path="collaboration-coming-soon" element={<CollaborationComingSoon />} />
-            {getFeature('Show_My_Community_Page__c', true) && (
-              <Route
-                path="community"
-                element={
-                  <ProtectedRoute>
-                    <Community />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-          </Route>
-          <Route path="/login" element={<Login />} />
-          <Route path="/offline" element={<Offline />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-      <Toast />
-      </SiteContentProvider>
-    </MaintenanceGate>
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <MaintenanceGate>
+        <SiteContentProvider>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              {getFeature('Show_Home_Page__c', true) && <Route index element={<Home />} />}
+              <Route path="search" element={<Search />} />
+              <Route path="project/:id" element={<ProjectDetails />} />
+              <Route path="unit/:id" element={<UnitDetails />} />
+              {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
+              <Route path="commercial-rental" element={<CommercialRental />} />
+              {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
+              {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
+              {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}
+              {getFeature('Show_Our_News_Page__c', true) && (
+                <>
+                  <Route path="news" element={<News />} />
+                  <Route path="news/:id" element={<NewsArticle />} />
+                  <Route path="our-news" element={<Navigate to="/news" replace />} />
+                </>
+              )}
+              <Route path="collaboration-coming-soon" element={<CollaborationComingSoon />} />
+              {getFeature('Show_My_Community_Page__c', true) && (
+                <Route
+                  path="community"
+                  element={
+                    <ProtectedRoute>
+                      <Community />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+            </Route>
+            <Route path="/login" element={<Login />} />
+            <Route path="/offline" element={<Offline />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toast />
+        </SiteContentProvider>
+      </MaintenanceGate>
+    </Suspense>
   )
 }
 

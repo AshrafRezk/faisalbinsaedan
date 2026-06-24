@@ -50,32 +50,44 @@ function App() {
     let mounted = true
     async function hydrate() {
       setLoading(true)
+      
       try {
-        const res = await getCurrentUser()
-        if (!mounted) return
-        if (res.success && res.data) {
-          setAuth(res.data, null)
-        } else {
-          // Keep the cached auth session from localStorage intact!
-          // This keeps the user logged in until they explicitly click log out, even on flaky networks or offline states.
-          console.log('[Auth] Keep using cached session from localStorage.')
-        }
-      } catch {
-        // Keep the cached session on network errors
-        console.log('[Auth] Network error, maintaining cached session.')
-      }
+        // Run auth and feature switches fetches in parallel to cut load time in half
+        const [authResult, featureResult] = await Promise.allSettled([
+          getCurrentUser(),
+          getFeatureSwitchesOnLoad()
+        ]);
 
-      try {
-        const featureRes = await getFeatureSwitchesOnLoad();
         if (!mounted) return;
-        if (featureRes?.payload?.data?.values) {
-          setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || []);
+
+        // Handle Auth
+        if (authResult.status === 'fulfilled') {
+          const res = authResult.value;
+          if (res.success && res.data) {
+            setAuth(res.data, null)
+          } else {
+            console.log('[Auth] Keep using cached session from localStorage.')
+          }
+        } else {
+          console.log('[Auth] Network error, maintaining cached session.')
         }
-      } catch (err) {
-        console.error('[Feature Switches] Failed to load feature switches', err);
-        if (mounted) {
+
+        // Handle Feature Switches
+        if (featureResult.status === 'fulfilled') {
+          const featureRes = featureResult.value;
+          if (featureRes?.payload?.data?.values) {
+            setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || []);
+          } else {
+            setFeatures({}, []);
+          }
+        } else {
+          console.error('[Feature Switches] Failed to load feature switches', featureResult.reason);
           setFeatures({}, []); // Ensure app loads even if feature switches fail
         }
+
+      } catch (err) {
+        console.error('[Hydration Error] Unexpected error during hydration', err);
+        if (mounted) setFeatures({}, []);
       } finally {
         if (mounted) setLoading(false)
       }
@@ -100,7 +112,11 @@ function App() {
   }, []);
 
   if (!isReady) {
-    return null; // Or a loading spinner
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (

@@ -242,7 +242,7 @@ async function getProjectNotesAndAttachments(projectId: string) {
     return ext === 'snote' || type === 'SNOTE'
   }
 
-  const toUrl = (versionId: string) => `/.netlify/functions/salesforce-file?versionId=${encodeURIComponent(versionId)}`
+  const toUrl = (versionId: string) => `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}`
 
   const notes = versions
     .filter(isNote)
@@ -272,7 +272,7 @@ function isSalesforceNoteVersion(v: SalesforceContentVersionRecord): boolean {
 }
 
 function salesforceFileProxyUrl(versionId: string): string {
-  return `/.netlify/functions/salesforce-file?versionId=${encodeURIComponent(versionId)}`
+  return `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}`
 }
 
 function resolveProjectLogoUrl(
@@ -1410,7 +1410,7 @@ export async function createLead(
       }
     }
 
-    const response = await fetch('/.netlify/functions/leads', {
+    const response = await fetch('/api/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1441,18 +1441,18 @@ export async function createLead(
 // Auth
 export async function login(username: string, password: string) {
   // Session-based login (cookie set by Netlify Function)
-  return fetcher<{ user: AuthUser }>('/.netlify/functions/auth-login', {
+  return fetcher<{ user: AuthUser }>('/api/auth-login', {
     method: 'POST',
     body: JSON.stringify({ email: username, password }),
   })
 }
 
 export async function getCurrentUser() {
-  return fetcher<AuthUser | null>('/.netlify/functions/auth-me')
+  return fetcher<AuthUser | null>('/api/auth-me')
 }
 
 export async function logout() {
-  return fetcher<void>('/.netlify/functions/auth-logout', { method: 'POST' })
+  return fetcher<void>('/api/auth-logout', { method: 'POST' })
 }
 
 // My Opportunities + Units (session-based)
@@ -1466,7 +1466,7 @@ export type MyOpportunity = {
 }
 
 export async function getMyOpportunities() {
-  return fetcher<MyOpportunity[]>('/.netlify/functions/my-opportunities')
+  return fetcher<MyOpportunity[]>('/api/my-opportunities')
 }
 
 // Cases (owner requests — session cookie auth via Netlify Function)
@@ -1475,7 +1475,7 @@ async function casesFetcher<T>(
   body?: Record<string, unknown>
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch('/.netlify/functions/cases', {
+    const response = await fetch('/api/cases', {
       method,
       credentials: 'include',
       headers: body ? { 'Content-Type': 'application/json' } : undefined,

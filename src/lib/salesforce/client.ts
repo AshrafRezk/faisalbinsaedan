@@ -99,7 +99,7 @@ export async function salesforceQuery<T>(soql: string): Promise<{ records: T[]; 
   console.log('[Salesforce Query] Executing SOQL via Netlify Function:', soql)
 
   try {
-    const response = await fetch('/.netlify/functions/salesforce-query', {
+    const response = await fetch('/api/salesforce-query', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ export async function salesforceCreate(
   console.log(`[Salesforce Create] Creating record in ${objectName} via Netlify Function:`, data)
 
   try {
-    const response = await fetch('/.netlify/functions/salesforce-create', {
+    const response = await fetch('/api/salesforce-create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ export async function salesforceFetchUnits(filters: Record<string, unknown> = {}
     })
 
     const query = params.toString() ? `?${params.toString()}` : ''
-    const response = await fetch(`/.netlify/functions/salesforce-units${query}`)
+    const response = await fetch(`/api/salesforce-units${query}`)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -244,7 +244,7 @@ export async function salesforceFetchNewsArticles(filters: Record<string, unknow
     })
 
     const query = params.toString() ? `?${params.toString()}` : ''
-    const response = await fetch(`/.netlify/functions/salesforce-news${query}`)
+    const response = await fetch(`/api/salesforce-news${query}`)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -267,7 +267,7 @@ export async function salesforceFetchNewsArticleDetail(recordId: string): Promis
   console.log('[Salesforce News] Fetching news article:', recordId)
 
   try {
-    const response = await fetch(`/.netlify/functions/salesforce-news?recordId=${encodeURIComponent(recordId)}`)
+    const response = await fetch(`/api/salesforce-news?recordId=${encodeURIComponent(recordId)}`)
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))

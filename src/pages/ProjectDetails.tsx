@@ -391,17 +391,17 @@ export default function ProjectDetails() {
             {galleryItems.length > 0 && (
               <MotionCard
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: '#1a1a1a' }}
+                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: 'transparent' }}
               >
                 <CardContent sx={{ p: 0, position: 'relative' }}>
                   <Box sx={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'white' }}>
-                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: '#000' }}>
+                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(10px)' }}>
                         <ImageIcon size={24} />
                       </Box>
                       <Typography variant="h6" fontWeight="bold">{t('project.gallery', 'Project Gallery')}</Typography>
                     </Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, ml: 1 }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(0,0,0,0.7)', mt: 1, ml: 1 }}>
                       {t('project.galleryHint', 'Drag to explore. Click to view.')}
                     </Typography>
                   </Box>
@@ -409,8 +409,8 @@ export default function ProjectDetails() {
                   <Box sx={{ width: '100%', height: { xs: 400, md: 600 } }}>
                     <CircularGallery 
                       items={galleryItems} 
-                      bend={3} 
-                      textColor="#ffffff" 
+                      bend={3}
+                      textColor="#000000"
                       borderRadius={0.05} 
                       onClick={handleGalleryClick} 
                     />
@@ -540,7 +540,7 @@ export default function ProjectDetails() {
             {project.brochureUrl && (
               <MotionCard
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: '#1a1a1a' }}
+                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: 'transparent' }}
               >
                 <CardContent sx={{ p: 0, position: 'relative' }}>
                   <Box sx={{ position: 'absolute', top: 24, left: 24, zIndex: 10, pointerEvents: 'none' }}>

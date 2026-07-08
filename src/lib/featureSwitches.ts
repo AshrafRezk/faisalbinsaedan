@@ -6,7 +6,7 @@ function isFresh(timestamp: number) {
 }
 
 async function fetchFeatureSwitches() {
-  const url = `/.netlify/functions/website-feature-switch`;
+  const url = `/api/website-feature-switch`;
   const response = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`Feature switch API failed: ${response.status}`);
   const payload = await response.json();

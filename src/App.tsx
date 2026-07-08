@@ -50,32 +50,44 @@ function App() {
     let mounted = true
     async function hydrate() {
       setLoading(true)
+      
       try {
-        const res = await getCurrentUser()
-        if (!mounted) return
-        if (res.success && res.data) {
-          setAuth(res.data, null)
-        } else {
-          // Keep the cached auth session from localStorage intact!
-          // This keeps the user logged in until they explicitly click log out, even on flaky networks or offline states.
-          console.log('[Auth] Keep using cached session from localStorage.')
-        }
-      } catch {
-        // Keep the cached session on network errors
-        console.log('[Auth] Network error, maintaining cached session.')
-      }
+        // Run auth and feature switches fetches in parallel to cut load time in half
+        const [authResult, featureResult] = await Promise.allSettled([
+          getCurrentUser(),
+          getFeatureSwitchesOnLoad()
+        ]);
 
-      try {
-        const featureRes = await getFeatureSwitchesOnLoad();
         if (!mounted) return;
-        if (featureRes?.payload?.data?.values) {
-          setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || []);
+
+        // Handle Auth
+        if (authResult.status === 'fulfilled') {
+          const res = authResult.value;
+          if (res.success && res.data) {
+            setAuth(res.data, null)
+          } else {
+            console.log('[Auth] Keep using cached session from localStorage.')
+          }
+        } else {
+          console.log('[Auth] Network error, maintaining cached session.')
         }
-      } catch (err) {
-        console.error('[Feature Switches] Failed to load feature switches', err);
-        if (mounted) {
+
+        // Handle Feature Switches
+        if (featureResult.status === 'fulfilled') {
+          const featureRes = featureResult.value;
+          if (featureRes?.payload?.data?.values) {
+            setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || []);
+          } else {
+            setFeatures({}, []);
+          }
+        } else {
+          console.error('[Feature Switches] Failed to load feature switches', featureResult.reason);
           setFeatures({}, []); // Ensure app loads even if feature switches fail
         }
+
+      } catch (err) {
+        console.error('[Hydration Error] Unexpected error during hydration', err);
+        if (mounted) setFeatures({}, []);
       } finally {
         if (mounted) setLoading(false)
       }
@@ -100,56 +112,59 @@ function App() {
   }, []);
 
   if (!isReady) {
-    return null; // Or a loading spinner
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
-    <MaintenanceGate>
-
-<SiteContentProvider>
-      <Suspense fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      }>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            {getFeature('Show_Home_Page__c', true) && <Route index element={<Home />} />}
-            <Route path="search" element={<Search />} />
-            <Route path="project/:id" element={<ProjectDetails />} />
-            <Route path="unit/:id" element={<UnitDetails />} />
-            {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
-            <Route path="commercial-rental" element={<CommercialRental />} />
-            {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
-            {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
-            {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}
-            {getFeature('Show_Our_News_Page__c', true) && (
-              <>
-                <Route path="news" element={<News />} />
-                <Route path="news/:id" element={<NewsArticle />} />
-                <Route path="our-news" element={<Navigate to="/news" replace />} />
-              </>
-            )}
-            <Route path="collaboration-coming-soon" element={<CollaborationComingSoon />} />
-            {getFeature('Show_My_Community_Page__c', true) && (
-              <Route
-                path="community"
-                element={
-                  <ProtectedRoute>
-                    <Community />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-          </Route>
-          <Route path="/login" element={<Login />} />
-          <Route path="/offline" element={<Offline />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-      <Toast />
-      </SiteContentProvider>
-    </MaintenanceGate>
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <MaintenanceGate>
+        <SiteContentProvider>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              {getFeature('Show_Home_Page__c', true) && <Route index element={<Home />} />}
+              <Route path="search" element={<Search />} />
+              <Route path="project/:id" element={<ProjectDetails />} />
+              <Route path="unit/:id" element={<UnitDetails />} />
+              {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
+              <Route path="commercial-rental" element={<CommercialRental />} />
+              {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
+              {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
+              {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}
+              {getFeature('Show_Our_News_Page__c', true) && (
+                <>
+                  <Route path="news" element={<News />} />
+                  <Route path="news/:id" element={<NewsArticle />} />
+                  <Route path="our-news" element={<Navigate to="/news" replace />} />
+                </>
+              )}
+              <Route path="collaboration-coming-soon" element={<CollaborationComingSoon />} />
+              {getFeature('Show_My_Community_Page__c', true) && (
+                <Route
+                  path="community"
+                  element={
+                    <ProtectedRoute>
+                      <Community />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+            </Route>
+            <Route path="/login" element={<Login />} />
+            <Route path="/offline" element={<Offline />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toast />
+        </SiteContentProvider>
+      </MaintenanceGate>
+    </Suspense>
   )
 }
 

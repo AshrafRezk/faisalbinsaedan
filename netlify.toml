@@ -7,6 +7,12 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
+# Proxy /api requests to Netlify Functions to bypass aggressive adblockers/firewalls
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 # Microsoft 365 domain verification for fbs.com.sa (must stay at site root)
 [[headers]]
   for = "/ms21837910.txt"

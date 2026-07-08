@@ -19,15 +19,14 @@ import { ArrowRight, FileText, Image as ImageIcon, ExternalLink, MapPin } from '
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { getProject } from '../lib/api-client'
-import type { Project, ProjectAttachment, ProjectNote } from '../lib/types'
-import { isModelAttachmentTitle, isModelImageFile, isModelPdfFile } from '../lib/projectMedia'
+import type { Project } from '../lib/types'
+import { isModelImageFile, isModelPdfFile } from '../lib/projectMedia'
 import { useFeatureSwitchStore } from '../lib/store'
 import OpenStreetProjectMap from '../components/ui/OpenStreetProjectMap'
 import RegisterInterestModal from '../components/home/RegisterInterestModal'
 import NearbyAmenities from '../components/project/NearbyAmenities'
 import ProjectBrochureViewer from '../components/project/ProjectBrochureViewer'
 import CircularGallery from '../components/reactbits/CircularGallery'
-import ProjectGalleryViewer from '../components/project/ProjectGalleryViewer'
 import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import type { ProjectModelFile } from '../lib/types'
 import InteractiveTopPlan from '../components/project/InteractiveTopPlan'
@@ -47,11 +46,9 @@ export default function ProjectDetails() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false)
-  const [galleryViewerOpen, setGalleryViewerOpen] = useState(false)
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null)
-  const [selectedGalleryTag, setSelectedGalleryTag] = useState<string | null>(null)
   const [modelViewerOpen, setModelViewerOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState<ProjectModelFile | null>(null)
+  const [activeModel, setActiveModel] = useState<ProjectModelFile | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -74,17 +71,37 @@ export default function ProjectDetails() {
 
   const location = useMemo(() => {
     if (!project) return ''
-    return i18n.language === 'ar' ? project.locationAr : project.location
+    const primary = i18n.language === 'ar' ? project.locationAr : project.location
+    if (typeof primary === 'string' && primary.trim().length > 0) return primary
+    const fallback = i18n.language === 'ar' ? project.location : project.locationAr
+    return typeof fallback === 'string' && fallback.trim().length > 0 ? fallback : ''
   }, [project, i18n.language])
 
-  // Format gallery for CircularGallery
+  // Kept for the (now disabled) circular photos section.
   const galleryItems = useMemo(() => {
     if (!project) return []
-    return (project.gallery || []).map(g => ({
+    return (project.gallery || []).map((g) => ({
       image: g.url,
-      text: i18n.language === 'ar' ? g.tagAr : g.tagEn
+      text: i18n.language === 'ar' ? g.tagAr : g.tagEn,
     }))
   }, [project, i18n.language])
+
+  // No-op: photos section disabled.
+  const handleGalleryClick = (_clickedMedia: { image: string; text: string }) => {}
+
+  const modelFiles = project?.modelFiles || []
+
+  useEffect(() => {
+    if (!modelFiles.length) {
+      setActiveModel(null)
+      return
+    }
+    setActiveModel((prev) => {
+      if (!prev) return modelFiles[0]
+      return modelFiles.some((m) => m.id === prev.id) ? prev : modelFiles[0]
+    })
+    // Only react to project id changes; modelFiles is derived from `project`.
+  }, [project?.id])
 
   if (isLoading) {
     return (
@@ -107,40 +124,12 @@ export default function ProjectDetails() {
     )
   }
 
-  const notes: ProjectNote[] = project.notes || []
-  
-  // Filter out the attachments that are mapped to specific visual spots
-  const attachments: ProjectAttachment[] = (project.attachments || []).filter(a => {
-    const title = (a.title || '').toLowerCase()
-    return !title.includes('project-logo') && 
-           !title.includes('project logo') && 
-           !title.includes('project-video-advert') && 
-           !title.includes('video advert') && 
-           !title.includes('project-top-plan') && 
-           !title.includes('project top plan') && 
-           !title.includes('project-hero') && 
-           !title.includes('project hero') &&
-           !title.includes('project-brochure') &&
-           !title.includes('project brochure') &&
-           !title.includes('project-gallery') &&
-           !title.includes('project gallery') &&
-           !isModelAttachmentTitle(a.title)
-  })
-
-  const modelFiles = project.modelFiles || []
-
   // Determine if video is native
   const isNativeVideo = project.featuredVideoUrl && 
                         (project.featuredVideoUrl.endsWith('.mp4') || 
                          project.featuredVideoUrl.endsWith('.webm') ||
                          project.featuredVideoUrl.includes('salesforce-file'))
 
-
-  const handleGalleryClick = (clickedMedia: { image: string; text: string }) => {
-    setSelectedGalleryImage(clickedMedia.image)
-    setSelectedGalleryTag(clickedMedia.text)
-    setGalleryViewerOpen(true)
-  }
 
   const openModelViewer = (model: ProjectModelFile) => {
     setSelectedModel(model)
@@ -388,7 +377,7 @@ export default function ProjectDetails() {
             )}
 
             {/* Circular Gallery Section */}
-            {galleryItems.length > 0 && (
+            {false && (
               <MotionCard
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
                 sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: 'transparent' }}
@@ -440,85 +429,131 @@ export default function ProjectDetails() {
                   <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>
                     {t('project.models', 'Unit Models')}
                   </Typography>
-                  <Stack spacing={3}>
-                    {modelFiles.map((model) => {
-                      const modelLabel = t('project.modelLabel', {
-                        number: model.number,
-                        defaultValue: `Model ${model.number}`,
-                      })
-                      const canExpand =
-                        isModelPdfFile(model.fileExtension) || isModelImageFile(model.fileExtension)
+                  <Grid container spacing={2}>
+                    {/* Sidebar: list of models */}
+                    <Grid item xs={12} md={4} lg={3}>
+                      <Box
+                        sx={{
+                          borderRadius: 3,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          overflow: 'hidden',
+                          bgcolor: 'background.paper',
+                          maxHeight: { xs: 240, md: '70vh' },
+                        }}
+                      >
+                        <Stack sx={{ p: 1.5 }} spacing={1}>
+                          {modelFiles.map((model) => {
+                            const modelLabel = t('project.modelLabel', {
+                              number: model.number,
+                              defaultValue: `Model ${model.number}`,
+                            })
+                            const canExpand =
+                              isModelPdfFile(model.fileExtension) || isModelImageFile(model.fileExtension)
+                            const isActive = activeModel?.id === model.id
 
-                      return (
-                        <Paper
-                          key={model.id}
-                          variant="outlined"
-                          onClick={canExpand ? () => openModelViewer(model) : undefined}
-                          sx={{
-                            borderRadius: 3,
-                            overflow: 'hidden',
-                            borderColor: 'divider',
-                            cursor: canExpand ? 'pointer' : 'default',
-                            transition: 'box-shadow 0.2s, transform 0.2s',
-                            ...(canExpand && {
-                              '&:hover': {
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                transform: 'translateY(-2px)',
-                              },
-                            }),
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              px: 2,
-                              py: 1.5,
-                              borderBottom: 1,
-                              borderColor: 'divider',
-                              bgcolor: 'grey.50',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: 1,
-                            }}
-                          >
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {modelLabel}
-                            </Typography>
-                            {canExpand && (
-                              <Typography variant="caption" color="text.secondary">
-                                {t('project.clickToEnlarge', 'Click to enlarge')}
-                              </Typography>
-                            )}
-                          </Box>
-                          {isModelPdfFile(model.fileExtension) ? (
+                            return (
+                              <Paper
+                                key={model.id}
+                                variant="outlined"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setActiveModel(model)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') setActiveModel(model)
+                                }}
+                                sx={{
+                                  borderRadius: 3,
+                                  overflow: 'hidden',
+                                  borderColor: isActive ? 'primary.main' : 'divider',
+                                  bgcolor: isActive ? 'primary.50' : 'transparent',
+                                  cursor: 'pointer',
+                                  transition: 'box-shadow 0.2s, transform 0.2s',
+                                  '&:hover': { transform: 'translateY(-1px)' },
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    px: 1.8,
+                                    py: 1.2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                  }}
+                                >
+                                  <Typography variant="subtitle2" fontWeight="bold">
+                                    {modelLabel}
+                                  </Typography>
+                                  {canExpand ? (
+                                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                      {t('project.clickToEnlarge', 'Click to enlarge')}
+                                    </Typography>
+                                  ) : (
+                                    <ExternalLink size={14} opacity={0.55} />
+                                  )}
+                                </Box>
+                              </Paper>
+                            )
+                          })}
+                        </Stack>
+                      </Box>
+                    </Grid>
+
+                    {/* Preview: only render the selected model */}
+                    <Grid item xs={12} md={8} lg={9}>
+                      <Box
+                        sx={{
+                          borderRadius: 3,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          overflow: 'hidden',
+                          bgcolor: 'background.paper',
+                          minHeight: { xs: 280, md: 360 },
+                        }}
+                      >
+                        {activeModel ? (
+                          isModelPdfFile(activeModel.fileExtension) ? (
                             <Box
                               sx={{
                                 height: { xs: 280, md: 360 },
                                 bgcolor: '#1a1a1a',
-                                pointerEvents: 'none',
+                                cursor: 'pointer',
                               }}
+                              onClick={() => openModelViewer(activeModel)}
                             >
-                              <ProjectBrochureViewer pdfUrl={model.url} />
+                              <ProjectBrochureViewer pdfUrl={activeModel.url} />
                             </Box>
-                          ) : isModelImageFile(model.fileExtension) ? (
+                          ) : isModelImageFile(activeModel.fileExtension) ? (
                             <Box
-                              component="img"
-                              src={model.url}
-                              alt={model.title}
                               sx={{
                                 width: '100%',
-                                display: 'block',
-                                maxHeight: 360,
-                                objectFit: 'contain',
+                                height: { xs: 280, md: 360 },
                                 bgcolor: 'grey.100',
-                                pointerEvents: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                               }}
-                            />
+                              onClick={() => openModelViewer(activeModel)}
+                            >
+                              <Box
+                                component="img"
+                                src={activeModel.url}
+                                alt={activeModel.title}
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  maxHeight: 360,
+                                  objectFit: 'contain',
+                                }}
+                              />
+                            </Box>
                           ) : (
-                            <Box sx={{ p: 2 }} onClick={(e) => e.stopPropagation()}>
+                            <Box sx={{ p: 2 }}>
                               <Button
                                 component="a"
-                                href={model.url}
+                                href={activeModel.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 variant="outlined"
@@ -527,11 +562,15 @@ export default function ProjectDetails() {
                                 {t('project.openModelFile', 'Open file')}
                               </Button>
                             </Box>
-                          )}
-                        </Paper>
-                      )
-                    })}
-                  </Stack>
+                          )
+                        ) : (
+                          <Box sx={{ p: 2, color: 'text.secondary' }}>
+                            {t('project.noModelsSelected', 'Select a model from the list')}
+                          </Box>
+                        )}
+                      </Box>
+                    </Grid>
+                  </Grid>
                 </CardContent>
               </MotionCard>
             )}
@@ -590,59 +629,7 @@ export default function ProjectDetails() {
                 </CardContent>
               </MotionCard>
 
-              {/* Notes */}
-              <MotionCard
-                initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-                sx={{ borderRadius: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.8)', bgcolor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                    <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.50', color: 'primary.main' }}><FileText size={20} /></Box>
-                    <Typography variant="h6" fontWeight="bold">{t('project.notes', 'Notes')}</Typography>
-                  </Box>
-                  {notes.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">{t('project.noNotes', 'No notes available')}</Typography>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {notes.map((n) => (
-                        <MuiLink key={n.id} href={n.url} target="_blank" rel="noreferrer" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, borderRadius: 2, bgcolor: 'white', textDecoration: 'none', color: 'text.primary', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: 'primary.main' } }}>
-                          <FileText size={18} opacity={0.6} />
-                          <Typography variant="body2" fontWeight="medium" sx={{ flexGrow: 1 }}>{n.title}</Typography>
-                          <ExternalLink size={16} opacity={0.4} />
-                        </MuiLink>
-                      ))}
-                    </Box>
-                  )}
-                </CardContent>
-              </MotionCard>
-
-
-              {/* Attachments */}
-              <MotionCard
-                initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-                sx={{ borderRadius: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.8)', bgcolor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)' }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                    <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.50', color: 'primary.main' }}><ImageIcon size={20} /></Box>
-                    <Typography variant="h6" fontWeight="bold">{t('project.attachments', 'Attachments')}</Typography>
-                  </Box>
-                  {attachments.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">{t('project.noAttachments', 'No attachments available')}</Typography>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {attachments.map((a) => (
-                        <MuiLink key={a.id} href={a.url} target="_blank" rel="noreferrer" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, borderRadius: 2, bgcolor: 'white', textDecoration: 'none', color: 'text.primary', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: 'primary.main' } }}>
-                          <ImageIcon size={18} opacity={0.6} />
-                          <Typography variant="body2" fontWeight="medium" sx={{ flexGrow: 1 }}>{a.title}</Typography>
-                          <ExternalLink size={16} opacity={0.4} />
-                        </MuiLink>
-                      ))}
-                    </Box>
-                  )}
-                </CardContent>
-              </MotionCard>
-
+              
             </Box>
           </Grid>
         </Grid>
@@ -664,13 +651,6 @@ export default function ProjectDetails() {
         onBookClick={() => setIsRegisterModalOpen(true)}
       />
 
-
-      <ProjectGalleryViewer
-        isOpen={galleryViewerOpen}
-        onClose={() => setGalleryViewerOpen(false)}
-        imageUrl={selectedGalleryImage}
-        tagText={selectedGalleryTag}
-      />
 
       <ProjectModelViewer
         isOpen={modelViewerOpen}

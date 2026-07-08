@@ -524,8 +524,14 @@ export async function getProjects(options?: {
         provinceRegion: p.Province_Region__c?.trim() || undefined,
         city: p.City__c?.trim() || undefined,
         projectType: p.Project_Type__c?.trim() || undefined,
-        location: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
-        locationAr: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
+        location: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
+        locationAr: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
         coverImageUrl: media.heroUrl || media.defaultUrl || p.Hero_Image_URL__c || p.Logo_URL__c || '',
         featuredVideoUrl: media.videoUrl || '',
         status: 'Active',
@@ -541,7 +547,10 @@ export async function getProjects(options?: {
         availablePhasesCount: availableUnitsCount,
         // Compatibility with older UI fields
         nameEn: p.Name,
-        locationEn: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
+        locationEn: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
       }
     })
 
@@ -796,8 +805,14 @@ export async function getProject(id: string) {
         name: p.Name,
         nameAr: p.Name,
         projectType: p.Project_Type__c?.trim() || undefined,
-        location: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
-        locationAr: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
+        location: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
+        locationAr: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
         coverImageUrl: media.heroUrl || media.defaultUrl || p.Hero_Image_URL__c || p.Logo_URL__c || '',
         featuredVideoUrl: media.videoUrl || '',
         status: 'Active',
@@ -815,7 +830,10 @@ export async function getProject(id: string) {
         hasAvailability: availableUnitsCount > 0,
         availablePhasesCount: availableUnitsCount,
         nameEn: p.Name,
-        locationEn: [p.District__c, p.City__c, p.Province_Region__c].filter(Boolean).join(', '),
+        locationEn: [p.District__c, p.City__c, p.Province_Region__c]
+          .map((v) => (typeof v === 'string' ? v.trim() : v))
+          .filter((v) => Boolean(v))
+          .join(', '),
       },
     }
   } catch (error) {

@@ -22,7 +22,6 @@ import { getProject } from '../lib/api-client'
 import type { Project } from '../lib/types'
 import { isModelImageFile, isModelPdfFile } from '../lib/projectMedia'
 import { useFeatureSwitchStore } from '../lib/store'
-import OpenStreetProjectMap from '../components/ui/OpenStreetProjectMap'
 import RegisterInterestModal from '../components/home/RegisterInterestModal'
 import NearbyAmenities from '../components/project/NearbyAmenities'
 import ProjectBrochureViewer from '../components/project/ProjectBrochureViewer'
@@ -36,6 +35,30 @@ type ProjectWithUi = Project & { hasAvailability?: boolean; availablePhasesCount
 
 const MotionBox = motion.create(Box)
 const MotionCard = motion.create(Card)
+
+/** Build an embeddable Google Maps URL — same approach as Contact / office locations. */
+function getProjectGoogleMapsEmbedUrl(project: ProjectWithUi): string | null {
+  const url = project.officeLocationUrl || ''
+  if (/google\.[^/]+\/maps\/embed/i.test(url) || /[?&]output=embed/i.test(url)) {
+    return url
+  }
+  if (typeof project.mapCentroidLat === 'number' && typeof project.mapCentroidLng === 'number') {
+    return `https://maps.google.com/maps?q=${project.mapCentroidLat},${project.mapCentroidLng}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+  }
+  const query = project.name || project.location || project.locationAr
+  if (query) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+  }
+  return null
+}
+
+function getProjectGoogleMapsOpenUrl(project: ProjectWithUi): string | null {
+  if (project.officeLocationUrl) return project.officeLocationUrl
+  if (typeof project.mapCentroidLat === 'number' && typeof project.mapCentroidLng === 'number') {
+    return `https://www.google.com/maps/dir/?api=1&destination=${project.mapCentroidLat},${project.mapCentroidLng}`
+  }
+  return null
+}
 
 export default function ProjectDetails() {
   const { t, i18n } = useTranslation()
@@ -90,6 +113,15 @@ export default function ProjectDetails() {
   const handleGalleryClick = (_clickedMedia: { image: string; text: string }) => {}
 
   const modelFiles = project?.modelFiles || []
+
+  const mapEmbedUrl = useMemo(
+    () => (project ? getProjectGoogleMapsEmbedUrl(project) : null),
+    [project]
+  )
+  const mapOpenUrl = useMemo(
+    () => (project ? getProjectGoogleMapsOpenUrl(project) : null),
+    [project]
+  )
 
   useEffect(() => {
     if (!modelFiles.length) {
@@ -410,36 +442,131 @@ export default function ProjectDetails() {
 
 
 
-            {/* Unit model files (titles ending with model-1 … model-10) */}
-            {modelFiles.length > 0 && (
+            {/* Brochure Section */}
+            {project.brochureUrl && (
               <MotionCard
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                sx={{
-                  mb: 4,
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
-                  border: '1px solid rgba(255,255,255,0.5)',
-                  bgcolor: 'background.paper',
-                }}
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
+                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: 'transparent' }}
               >
-                <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>
-                    {t('project.models', 'Unit Models')}
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {/* Sidebar: list of models */}
-                    <Grid item xs={12} md={4} lg={3}>
+                <CardContent sx={{ p: 0, position: 'relative' }}>
+                  <Box sx={{ position: 'absolute', top: 24, left: 24, zIndex: 10, pointerEvents: 'none' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'white' }}>
+                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                        <FileText size={24} />
+                      </Box>
+                      <Typography variant="h6" fontWeight="bold">{t('project.brochure', 'Project Brochure')}</Typography>
+                    </Box>
+                  </Box>
+                  <ProjectBrochureViewer pdfUrl={project.brochureUrl} />
+                </CardContent>
+              </MotionCard>
+            )}
+
+          </Grid>
+
+          {/* Sidebar column (visual left in RTL): Location + Models */}
+          <Grid size={{ xs: 12, lg: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 100 }}>
+              
+              {/* Interactive Master Plan */}
+              {project.topPlanUrl && (
+                <InteractiveTopPlan imageUrl={project.topPlanUrl} />
+              )}
+
+              {/* Map Section (Location) */}
+              <MotionCard
+                initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
+                sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.8)', bgcolor: 'white' }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>{t('project.location', 'Location')}</Typography>
+                  <Box sx={{ borderRadius: 3, overflow: 'hidden', position: 'relative', mb: 2, border: 1, borderColor: 'divider' }}>
+                    {mapEmbedUrl ? (
+                      <Box sx={{ position: 'relative', width: '100%', height: 300 }}>
+                        <Box
+                          component="iframe"
+                          src={mapEmbedUrl}
+                          title={t('project.location', 'Location')}
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          allowFullScreen
+                          sx={{
+                            border: 0,
+                            display: 'block',
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Box sx={{ p: 3, textAlign: 'center', height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <MapPin size={48} color="#e0e0e0" style={{ marginBottom: 16 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {t('project.mapUnavailable', 'Map data not available')}
+                        </Typography>
+                      </Box>
+                    )}
+                    {mapOpenUrl && (
+                      <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.02)' }}>
+                        <Box
+                          component="a"
+                          href={mapOpenUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            textDecoration: 'none',
+                            color: 'primary.main',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            '&:hover': { textDecoration: 'underline', opacity: 0.8 },
+                          }}
+                        >
+                          <MapPin size={16} />
+                          <span>
+                            {i18n.language === 'ar'
+                              ? 'فتح في خرائط جوجل ←'
+                              : 'Open in Google Maps →'}
+                          </span>
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                  <NearbyAmenities amenities={project.nearbyLocations} />
+                </CardContent>
+              </MotionCard>
+
+              {/* Unit Models — under Location */}
+              {modelFiles.length > 0 && (
+                <MotionCard
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  sx={{
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+                    border: '1px solid rgba(255,255,255,0.5)',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                      {t('project.models', 'Unit Models')}
+                    </Typography>
+                    <Stack spacing={2}>
                       <Box
                         sx={{
                           borderRadius: 3,
                           border: '1px solid',
                           borderColor: 'divider',
-                          overflow: 'hidden',
+                          overflow: 'auto',
                           bgcolor: 'background.paper',
-                          maxHeight: { xs: 240, md: '70vh' },
+                          maxHeight: 220,
                         }}
                       >
                         <Stack sx={{ p: 1.5 }} spacing={1}>
@@ -466,7 +593,8 @@ export default function ProjectDetails() {
                                   borderRadius: 3,
                                   overflow: 'hidden',
                                   borderColor: isActive ? 'primary.main' : 'divider',
-                                  bgcolor: isActive ? 'primary.50' : 'transparent',
+                                  borderWidth: isActive ? 2 : 1,
+                                  bgcolor: isActive ? alpha('#1a365d', 0.04) : 'transparent',
                                   cursor: 'pointer',
                                   transition: 'box-shadow 0.2s, transform 0.2s',
                                   '&:hover': { transform: 'translateY(-1px)' },
@@ -480,6 +608,7 @@ export default function ProjectDetails() {
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: 1,
+                                    direction: 'rtl',
                                   }}
                                 >
                                   <Typography variant="subtitle2" fontWeight="bold">
@@ -498,10 +627,7 @@ export default function ProjectDetails() {
                           })}
                         </Stack>
                       </Box>
-                    </Grid>
 
-                    {/* Preview: only render the selected model */}
-                    <Grid item xs={12} md={8} lg={9}>
                       <Box
                         sx={{
                           borderRadius: 3,
@@ -509,14 +635,14 @@ export default function ProjectDetails() {
                           borderColor: 'divider',
                           overflow: 'hidden',
                           bgcolor: 'background.paper',
-                          minHeight: { xs: 280, md: 360 },
+                          minHeight: 220,
                         }}
                       >
                         {activeModel ? (
                           isModelPdfFile(activeModel.fileExtension) ? (
                             <Box
                               sx={{
-                                height: { xs: 280, md: 360 },
+                                height: 220,
                                 bgcolor: '#1a1a1a',
                                 cursor: 'pointer',
                               }}
@@ -528,7 +654,7 @@ export default function ProjectDetails() {
                             <Box
                               sx={{
                                 width: '100%',
-                                height: { xs: 280, md: 360 },
+                                height: 220,
                                 bgcolor: 'grey.100',
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -544,7 +670,7 @@ export default function ProjectDetails() {
                                 sx={{
                                   width: '100%',
                                   height: '100%',
-                                  maxHeight: 360,
+                                  maxHeight: 220,
                                   objectFit: 'contain',
                                 }}
                               />
@@ -569,65 +695,10 @@ export default function ProjectDetails() {
                           </Box>
                         )}
                       </Box>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </MotionCard>
-            )}
-
-            {/* Brochure Section */}
-            {project.brochureUrl && (
-              <MotionCard
-                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-                sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.08)', border: '1px solid rgba(255,255,255,0.5)', bgcolor: 'transparent' }}
-              >
-                <CardContent sx={{ p: 0, position: 'relative' }}>
-                  <Box sx={{ position: 'absolute', top: 24, left: 24, zIndex: 10, pointerEvents: 'none' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'white' }}>
-                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                        <FileText size={24} />
-                      </Box>
-                      <Typography variant="h6" fontWeight="bold">{t('project.brochure', 'Project Brochure')}</Typography>
-                    </Box>
-                  </Box>
-                  <ProjectBrochureViewer pdfUrl={project.brochureUrl} />
-                </CardContent>
-              </MotionCard>
-            )}
-
-          </Grid>
-
-          {/* Right Column: Details & Attachments */}
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 100 }}>
-              
-              {/* Interactive Master Plan */}
-              {project.topPlanUrl && (
-                <InteractiveTopPlan imageUrl={project.topPlanUrl} />
+                    </Stack>
+                  </CardContent>
+                </MotionCard>
               )}
-
-              {/* Map Section (Location) */}
-              <MotionCard
-                initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
-                sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.8)', bgcolor: 'white' }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>{t('project.location', 'Location')}</Typography>
-                  <Box sx={{ borderRadius: 3, overflow: 'hidden', position: 'relative', mb: 3 }}>
-                    <OpenStreetProjectMap
-                      centroid={
-                        typeof project.mapCentroidLat === 'number' && typeof project.mapCentroidLng === 'number'
-                          ? { lat: project.mapCentroidLat, lng: project.mapCentroidLng }
-                          : undefined
-                      }
-                      geometry={project.mapGeometryJson}
-                      height={300}
-                      zoom={16}
-                    />
-                  </Box>
-                  <NearbyAmenities lat={project.mapCentroidLat} lng={project.mapCentroidLng} />
-                </CardContent>
-              </MotionCard>
 
               
             </Box>

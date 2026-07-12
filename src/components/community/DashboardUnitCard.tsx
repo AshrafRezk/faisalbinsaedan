@@ -76,7 +76,7 @@ export default function DashboardUnitCard({ unit }: DashboardUnitCardProps) {
             position: 'absolute',
             top: 12,
             right: 12,
-            bgcolor: '#c9a227',
+            bgcolor: 'primary.main',
             color: 'white',
             fontWeight: 'bold',
             borderRadius: 1,

@@ -82,8 +82,8 @@ export default function OpenStreetProjectMap({
         scrollWheelZoom
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; Google Maps'
+          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
         {centroid && <Marker position={[centroid.lat, centroid.lng]} icon={defaultMarkerIcon} />}
         {polygons.map((ring, idx) => (

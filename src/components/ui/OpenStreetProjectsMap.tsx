@@ -107,7 +107,7 @@ export default function OpenStreetProjectsMap({
                 {l.subtitle ? <div style={{ opacity: 0.8, fontSize: 12, marginBottom: 8 }}>{l.subtitle}</div> : null}
                 <button
                   style={{
-                    backgroundColor: selectedId === l.id ? '#c9a227' : '#1a365d',
+                    backgroundColor: selectedId === l.id ? '#2c5282' : '#1a365d',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',

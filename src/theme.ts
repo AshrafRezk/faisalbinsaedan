@@ -10,9 +10,9 @@ export const theme = createTheme({
       dark: '#0f1f3a',
     },
     secondary: {
-      main: '#c9a227',
-      light: '#d4b64a',
-      dark: '#a8871f',
+      main: '#2c5282',
+      light: '#799fbc',
+      dark: '#1a365d',
     },
     background: {
       default: '#fafafa',
@@ -27,8 +27,8 @@ export const theme = createTheme({
       light: '#f0fff4',
     },
     warning: {
-      main: '#d69e2e',
-      light: '#fffff0',
+      main: '#c05621',
+      light: '#fffaf0',
     },
     error: {
       main: '#c53030',

@@ -4,7 +4,7 @@ import {
   findProjectModelFile,
   isModelAttachmentTitle,
 } from '../projectMedia'
-import type { ProjectModelFile } from '../types'
+import type { ProjectModelFile, ProjectNearbyLocation } from '../types'
 import { salesforceQuery, salesforceFetchUnits, salesforceFetchNewsArticles, salesforceFetchNewsArticleDetail, SalesforceUnitDTO } from '../salesforce/client'
 import {
   buildHomePageContent,
@@ -189,6 +189,16 @@ interface SalesforceProjectRecord {
   Office_Location__c?: string
 }
 
+interface SalesforceNearbyLocationRecord {
+  Id: string
+  Name_English__c?: string
+  Name_Arabic__c?: string
+  Category__c?: string
+  Minutes__c?: number
+  Sort_Order__c?: number
+  Is_Active__c?: boolean
+}
+
 const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
 
 function isValidSalesforceId(id: string): boolean {
@@ -273,6 +283,79 @@ function isSalesforceNoteVersion(v: SalesforceContentVersionRecord): boolean {
 
 function salesforceFileProxyUrl(versionId: string): string {
   return `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}`
+}
+
+async function getProjectNearbyLocations(projectId: string): Promise<ProjectNearbyLocation[]> {
+  if (!isValidSalesforceId(projectId)) return []
+
+  const mapRecords = (records: SalesforceNearbyLocationRecord[]): ProjectNearbyLocation[] =>
+    (records || [])
+      .map((r) => {
+        const name = (r.Name_English__c || '').trim()
+        const nameAr = (r.Name_Arabic__c || '').trim() || name
+        if (!name && !nameAr) return null
+        const minutesRaw = r.Minutes__c
+        const minutes = typeof minutesRaw === 'number' ? minutesRaw : Number(minutesRaw)
+        return {
+          id: r.Id,
+          name: name || nameAr,
+          nameAr,
+          category: (r.Category__c || '').trim() || 'Mall',
+          ...(Number.isFinite(minutes) ? { estimatedMinutes: Math.round(minutes) } : {}),
+        } satisfies ProjectNearbyLocation
+      })
+      .filter((item): item is ProjectNearbyLocation => item !== null)
+
+  // Supports progressive Salesforce schemas. Cached mode avoids repeating INVALID_FIELD 400s.
+  // After adding Minutes__c / Sort_Order__c / Is_Active__c, run once in the browser console:
+  //   sessionStorage.removeItem('nearby_location_soql_mode_v2')
+  // so the richer query is picked up (see docs/nearby-locations-fields.md).
+  type NearbyQueryMode = 'full' | 'withMinutes' | 'base'
+  const cacheKey = 'nearby_location_soql_mode_v2'
+  const modes: Record<NearbyQueryMode, string> = {
+    full: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, Sort_Order__c
+           FROM Nearby_Location__c
+           WHERE Project__c = '${projectId}' AND Is_Active__c = true
+           ORDER BY Sort_Order__c ASC NULLS LAST, CreatedDate ASC`,
+    withMinutes: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, CreatedDate
+                  FROM Nearby_Location__c
+                  WHERE Project__c = '${projectId}'
+                  ORDER BY CreatedDate ASC`,
+    base: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, CreatedDate
+           FROM Nearby_Location__c
+           WHERE Project__c = '${projectId}'
+           ORDER BY CreatedDate ASC`,
+  }
+
+  const cached = sessionStorage.getItem(cacheKey) as NearbyQueryMode | null
+  // If we already know a working mode, only use that (no probe noise).
+  // Otherwise try richest → base once and cache the winner.
+  const order: NearbyQueryMode[] = cached ? [cached] : ['full', 'withMinutes', 'base']
+
+  for (const mode of order) {
+    try {
+      const result = await salesforceQuery<SalesforceNearbyLocationRecord>(modes[mode])
+      sessionStorage.setItem(cacheKey, mode)
+      return mapRecords(result.records || [])
+    } catch {
+      if (cached === mode) {
+        sessionStorage.removeItem(cacheKey)
+        // Retry discovery from scratch
+        for (const fallback of ['full', 'withMinutes', 'base'] as NearbyQueryMode[]) {
+          try {
+            const result = await salesforceQuery<SalesforceNearbyLocationRecord>(modes[fallback])
+            sessionStorage.setItem(cacheKey, fallback)
+            return mapRecords(result.records || [])
+          } catch {
+            // continue
+          }
+        }
+      }
+    }
+  }
+
+  console.warn('[Project] Nearby locations query failed — check Nearby_Location__c in Salesforce')
+  return []
 }
 
 function resolveProjectLogoUrl(
@@ -768,7 +851,8 @@ export async function getProject(id: string) {
   try {
     const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
-                          Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c
+                          Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
+                          Office_Location__c
                           FROM Project__c 
                           WHERE Id = '${id}'
                           LIMIT 1`
@@ -779,9 +863,10 @@ export async function getProject(id: string) {
       return { success: false, error: 'Project not found in Salesforce' }
     }
 
-    const [{ notes, attachments: allAttachments }, availableUnitsCount] = await Promise.all([
+    const [{ notes, attachments: allAttachments }, availableUnitsCount, nearbyLocations] = await Promise.all([
       getProjectNotesAndAttachments(id),
       getAvailableUnitsCountForProject(id, p.Available_Units__c),
+      getProjectNearbyLocations(id),
     ])
     const modelFiles = extractProjectModelFiles(allAttachments)
     const attachments = allAttachments.filter((a) => !isModelAttachmentTitle(a.title))
@@ -819,11 +904,15 @@ export async function getProject(id: string) {
         mapCentroidLat,
         mapCentroidLng,
         mapGeometryJson,
+        officeLocationUrl: (p.Office_Location__c || '').trim()
+          ? normalizeUrl((p.Office_Location__c as string).trim())
+          : undefined,
         logoUrl: resolveProjectLogoUrl(media, p.Logo_URL__c),
         topPlanUrl: media.topPlanUrl,
         brochureUrl: media.brochureUrl,
         gallery: media.gallery,
         modelFiles,
+        nearbyLocations,
         notes,
         attachments,
         phases: [],

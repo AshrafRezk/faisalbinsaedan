@@ -20,6 +20,8 @@ export interface Project {
   mapCentroidLat?: number;
   mapCentroidLng?: number;
   mapGeometryJson?: unknown;
+  /** Salesforce Office_Location__c — Google Maps link / embed URL */
+  officeLocationUrl?: string;
   logoUrl?: string;
   topPlanUrl?: string;
   brochureUrl?: string;
@@ -28,7 +30,30 @@ export interface Project {
   gallery?: Array<{ url: string; tagEn: string; tagAr: string; }>;
   /** Content files whose title ends with model-1 … model-10 */
   modelFiles?: ProjectModelFile[];
+  /** Curated nearby places from Salesforce Nearby_Location__c */
+  nearbyLocations?: ProjectNearbyLocation[];
   phases: Phase[];
+}
+
+export type NearbyLocationCategory =
+  | 'Train Station'
+  | 'Airport'
+  | 'Bank'
+  | 'Chamber of Commerce'
+  | 'Port'
+  | 'University'
+  | 'School'
+  | 'Library'
+  | 'Hospital'
+  | 'Mall'
+
+export interface ProjectNearbyLocation {
+  id: string
+  name: string
+  nameAr: string
+  category: NearbyLocationCategory | string
+  /** Drive time in minutes — omitted until Minutes__c exists in Salesforce */
+  estimatedMinutes?: number
 }
 
 export interface ProjectModelFile {

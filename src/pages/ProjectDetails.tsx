@@ -30,7 +30,7 @@ import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import type { ProjectModelFile } from '../lib/types'
 import InteractiveTopPlan from '../components/project/InteractiveTopPlan'
 import FinanceCalculatorModal, { SakaniMathIcon } from '../components/ui/FinanceCalculatorModal'
-import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../lib/googleMapsUrls'
+import { toGoogleMapsEmbedUrl } from '../lib/googleMapsUrls'
 
 type ProjectWithUi = Project & { hasAvailability?: boolean; availablePhasesCount?: number; nameEn?: string; locationEn?: string }
 
@@ -100,11 +100,7 @@ export default function ProjectDetails() {
   const modelFiles = project?.modelFiles || []
 
   const mapEmbedUrl = useMemo(
-    () => (project ? toGoogleMapsEmbedUrl(project.officeLocationUrl, projectMapFallback(project)) : null),
-    [project]
-  )
-  const mapOpenUrl = useMemo(
-    () => (project ? toGoogleMapsOpenUrl(project.officeLocationUrl, projectMapFallback(project)) : null),
+    () => (project ? toGoogleMapsEmbedUrl(project.projectLocationUrl, projectMapFallback(project)) : null),
     [project]
   )
 
@@ -491,33 +487,6 @@ export default function ProjectDetails() {
                         <Typography variant="body2" color="text.secondary">
                           {t('project.mapUnavailable', 'Map data not available')}
                         </Typography>
-                      </Box>
-                    )}
-                    {mapOpenUrl && (
-                      <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.02)' }}>
-                        <Box
-                          component="a"
-                          href={mapOpenUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            textDecoration: 'none',
-                            color: 'primary.main',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            '&:hover': { textDecoration: 'underline', opacity: 0.8 },
-                          }}
-                        >
-                          <MapPin size={16} />
-                          <span>
-                            {i18n.language === 'ar'
-                              ? 'فتح في خرائط جوجل ←'
-                              : 'Open in Google Maps →'}
-                          </span>
-                        </Box>
                       </Box>
                     )}
                   </Box>

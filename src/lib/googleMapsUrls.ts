@@ -1,4 +1,4 @@
-/** Normalize Office_Location__c values (missing or typo'd schemes → https). */
+/** Normalize map URL values (missing or typo'd schemes → https). */
 function normalizeUrl(raw: string): string {
   const trimmed = raw.trim()
   const schemeMatch = trimmed.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//)

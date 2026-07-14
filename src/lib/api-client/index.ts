@@ -187,6 +187,7 @@ interface SalesforceProjectRecord {
   Map_Centroid_Lng__c?: number
   Map_Geometry_JSON__c?: string
   Office_Location__c?: string
+  Project_Location__c?: string
 }
 
 interface SalesforceNearbyLocationRecord {
@@ -843,7 +844,7 @@ export async function getProject(id: string) {
     const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
-                          Office_Location__c
+                          Project_Location__c, Office_Location__c
                           FROM Project__c 
                           WHERE Id = '${id}'
                           LIMIT 1`
@@ -895,6 +896,9 @@ export async function getProject(id: string) {
         mapCentroidLat,
         mapCentroidLng,
         mapGeometryJson,
+        projectLocationUrl: (p.Project_Location__c || '').trim()
+          ? normalizeUrl((p.Project_Location__c as string).trim())
+          : undefined,
         officeLocationUrl: (p.Office_Location__c || '').trim()
           ? normalizeUrl((p.Office_Location__c as string).trim())
           : undefined,

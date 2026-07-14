@@ -20,8 +20,10 @@ export interface Project {
   mapCentroidLat?: number;
   mapCentroidLng?: number;
   mapGeometryJson?: unknown;
-  /** Salesforce Office_Location__c — Google Maps link / embed URL */
+  /** Salesforce Office_Location__c — sales office map link */
   officeLocationUrl?: string;
+  /** Salesforce Project_Location__c — project site map (embed / Google Maps URL) */
+  projectLocationUrl?: string;
   logoUrl?: string;
   topPlanUrl?: string;
   brochureUrl?: string;

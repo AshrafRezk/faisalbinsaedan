@@ -30,34 +30,19 @@ import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import type { ProjectModelFile } from '../lib/types'
 import InteractiveTopPlan from '../components/project/InteractiveTopPlan'
 import FinanceCalculatorModal, { SakaniMathIcon } from '../components/ui/FinanceCalculatorModal'
+import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../lib/googleMapsUrls'
 
 type ProjectWithUi = Project & { hasAvailability?: boolean; availablePhasesCount?: number; nameEn?: string; locationEn?: string }
 
 const MotionBox = motion.create(Box)
 const MotionCard = motion.create(Card)
 
-/** Build an embeddable Google Maps URL — same approach as Contact / office locations. */
-function getProjectGoogleMapsEmbedUrl(project: ProjectWithUi): string | null {
-  const url = project.officeLocationUrl || ''
-  if (/google\.[^/]+\/maps\/embed/i.test(url) || /[?&]output=embed/i.test(url)) {
-    return url
+function projectMapFallback(project: ProjectWithUi) {
+  return {
+    lat: project.mapCentroidLat,
+    lng: project.mapCentroidLng,
+    query: project.name || project.location || project.locationAr,
   }
-  if (typeof project.mapCentroidLat === 'number' && typeof project.mapCentroidLng === 'number') {
-    return `https://maps.google.com/maps?q=${project.mapCentroidLat},${project.mapCentroidLng}&t=&z=15&ie=UTF8&iwloc=&output=embed`
-  }
-  const query = project.name || project.location || project.locationAr
-  if (query) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
-  }
-  return null
-}
-
-function getProjectGoogleMapsOpenUrl(project: ProjectWithUi): string | null {
-  if (project.officeLocationUrl) return project.officeLocationUrl
-  if (typeof project.mapCentroidLat === 'number' && typeof project.mapCentroidLng === 'number') {
-    return `https://www.google.com/maps/dir/?api=1&destination=${project.mapCentroidLat},${project.mapCentroidLng}`
-  }
-  return null
 }
 
 export default function ProjectDetails() {
@@ -115,11 +100,11 @@ export default function ProjectDetails() {
   const modelFiles = project?.modelFiles || []
 
   const mapEmbedUrl = useMemo(
-    () => (project ? getProjectGoogleMapsEmbedUrl(project) : null),
+    () => (project ? toGoogleMapsEmbedUrl(project.officeLocationUrl, projectMapFallback(project)) : null),
     [project]
   )
   const mapOpenUrl = useMemo(
-    () => (project ? getProjectGoogleMapsOpenUrl(project) : null),
+    () => (project ? toGoogleMapsOpenUrl(project.officeLocationUrl, projectMapFallback(project)) : null),
     [project]
   )
 

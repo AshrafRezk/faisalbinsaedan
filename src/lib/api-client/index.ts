@@ -306,12 +306,10 @@ async function getProjectNearbyLocations(projectId: string): Promise<ProjectNear
       })
       .filter((item): item is ProjectNearbyLocation => item !== null)
 
-  // Supports progressive Salesforce schemas. Cached mode avoids repeating INVALID_FIELD 400s.
-  // After adding Minutes__c / Sort_Order__c / Is_Active__c, run once in the browser console:
-  //   sessionStorage.removeItem('nearby_location_soql_mode_v2')
-  // so the richer query is picked up (see docs/nearby-locations-fields.md).
+  // Query tiers — use the richest shape the org supports.
+  // Current org: Minutes__c yes; Sort_Order__c / Is_Active__c not yet.
   type NearbyQueryMode = 'full' | 'withMinutes' | 'base'
-  const cacheKey = 'nearby_location_soql_mode_v2'
+  const cacheKey = 'nearby_location_soql_mode_v3'
   const modes: Record<NearbyQueryMode, string> = {
     full: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, Sort_Order__c
            FROM Nearby_Location__c
@@ -327,10 +325,15 @@ async function getProjectNearbyLocations(projectId: string): Promise<ProjectNear
            ORDER BY CreatedDate ASC`,
   }
 
+  const tier: Record<NearbyQueryMode, number> = { base: 0, withMinutes: 1, full: 2 }
   const cached = sessionStorage.getItem(cacheKey) as NearbyQueryMode | null
-  // If we already know a working mode, only use that (no probe noise).
-  // Otherwise try richest → base once and cache the winner.
-  const order: NearbyQueryMode[] = cached ? [cached] : ['full', 'withMinutes', 'base']
+
+  // Always try modes at or above cached tier first so new SF fields (e.g. Minutes__c) are picked up
+  // without requiring users to clear sessionStorage manually.
+  const allModes: NearbyQueryMode[] = ['full', 'withMinutes', 'base']
+  const order: NearbyQueryMode[] = cached
+    ? [...allModes.filter((m) => tier[m] >= tier[cached]), ...allModes.filter((m) => tier[m] < tier[cached])]
+    : allModes
 
   for (const mode of order) {
     try {
@@ -338,19 +341,7 @@ async function getProjectNearbyLocations(projectId: string): Promise<ProjectNear
       sessionStorage.setItem(cacheKey, mode)
       return mapRecords(result.records || [])
     } catch {
-      if (cached === mode) {
-        sessionStorage.removeItem(cacheKey)
-        // Retry discovery from scratch
-        for (const fallback of ['full', 'withMinutes', 'base'] as NearbyQueryMode[]) {
-          try {
-            const result = await salesforceQuery<SalesforceNearbyLocationRecord>(modes[fallback])
-            sessionStorage.setItem(cacheKey, fallback)
-            return mapRecords(result.records || [])
-          } catch {
-            // continue
-          }
-        }
-      }
+      if (cached === mode) sessionStorage.removeItem(cacheKey)
     }
   }
 

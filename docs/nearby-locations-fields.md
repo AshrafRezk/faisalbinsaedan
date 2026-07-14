@@ -20,24 +20,16 @@ Create custom object **`Nearby_Location__c`** with **Master-Detail** to **`Proje
 | `Sort_Order__c` | Number | Sort Order | Display order (lowest first) |
 | `Is_Active__c` | Checkbox (default `true`) | Active | Uncheck to hide without deleting |
 
-### Currently missing in org (create these)
+### Currently optional in org
 
-Your org already has `Name_English__c`, `Name_Arabic__c`, `Category__c`, and `Project__c`.  
-The site loads with those fields today. Add these for full behavior:
+Your org has **`Minutes__c`** — drive times load once the site uses the `withMinutes` query tier.
 
-1. **`Minutes__c`** — Number — drive time (“X minutes from …”)  
-2. **`Sort_Order__c`** — Number — display order (lowest first)  
-3. **`Is_Active__c`** — Checkbox, default checked — hide without deleting  
+Still optional (add when needed):
 
-Until **`Minutes__c`** exists, places still show with name + category (minutes as “—”).
+1. **`Sort_Order__c`** — Number — display order (lowest first)  
+2. **`Is_Active__c`** — Checkbox, default checked — hide without deleting  
 
-After you add the missing fields, clear the cached query mode once in the browser console so the site picks them up:
-
-```js
-sessionStorage.removeItem('nearby_location_soql_mode_v2')
-```
-
-Then reload the project page.
+If a record has no value in **`Minutes__c`**, the site shows “—” and “NEAR / من” instead of minutes.
 
 ### `Category__c` picklist values
 

@@ -5,8 +5,9 @@ import L, { LatLngExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { getProjects } from '../../lib/api-client'
-import type { Project } from '../../lib/types'
+import { getProjects, getProjectMapUnits } from '../../lib/api-client'
+import { filterMapEligibleProjects, resolveMapCentroid, geometryToLatLngRings, resolveUnitMapGeometry, unitStatusColors } from '../../lib/projectMap'
+import type { Project, ProjectMapUnit } from '../../lib/types'
 
 type ProjectWithAvailability = Project & {
   hasAvailability?: boolean
@@ -153,11 +154,13 @@ function MapController({
   projects,
   resetTrigger,
   highlightedProjectId,
+  highlightedUnits,
 }: {
   selectedRegion: string | null
   projects: ProjectWithAvailability[]
   resetTrigger: number
   highlightedProjectId?: string | null
+  highlightedUnits?: ProjectMapUnit[]
 }) {
   const map = useMap()
 
@@ -167,18 +170,28 @@ function MapController({
     // If there is a highlighted project, fly to it with slow zoom!
     if (highlightedProjectId) {
       const hp = projects.find((p) => p.id === highlightedProjectId)
+      const pts: [number, number][] = []
       if (hp) {
         const lat = typeof hp.renderLat === 'number' ? hp.renderLat : hp.mapCentroidLat
         const lng = typeof hp.renderLng === 'number' ? hp.renderLng : hp.mapCentroidLng
-        if (typeof lat === 'number' && typeof lng === 'number') {
-          // Slow animation zoom speed (duration: 3.0 seconds, zoom level: 13)
-          map.flyTo([lat, lng], 13, {
-            duration: 3.0,
-            easeLinearity: 0.25,
-            noMoveStart: true,
-          })
-          return
+        if (typeof lat === 'number' && typeof lng === 'number') pts.push([lat, lng])
+        if (isPolygon(hp.mapGeometryJson)) {
+          hp.mapGeometryJson.coordinates.forEach((ring) => ring.forEach(([lng, lat]) => pts.push([lat, lng])))
+        } else if (isMultiPolygon(hp.mapGeometryJson)) {
+          hp.mapGeometryJson.coordinates.forEach((poly) => poly.forEach((ring) => ring.forEach(([lng, lat]) => pts.push([lat, lng]))))
         }
+      }
+      ;(highlightedUnits || []).forEach((u) => {
+        const geom = resolveUnitMapGeometry(u)
+        geometryToLatLngRings(geom).forEach((ring) => ring.forEach((p) => pts.push(p)))
+      })
+      if (pts.length > 1) {
+        map.flyToBounds(L.latLngBounds(pts), { padding: [60, 60], duration: 2.5, maxZoom: 17 })
+        return
+      }
+      if (pts.length === 1) {
+        map.flyTo(pts[0], 15, { duration: 2.5, easeLinearity: 0.25, noMoveStart: true })
+        return
       }
     }
 
@@ -212,7 +225,7 @@ function MapController({
     } else if (!selectedRegion) {
       map.flyTo([24.7136, 46.6753], 6, { duration: 1.2 })
     }
-  }, [selectedRegion, projects, resetTrigger, map, highlightedProjectId])
+  }, [selectedRegion, projects, resetTrigger, map, highlightedProjectId, highlightedUnits])
 
   return null
 }
@@ -263,6 +276,7 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
   const { i18n } = useTranslation()
   const navigate = useNavigate()
   const [fetchedProjects, setFetchedProjects] = useState<ProjectWithAvailability[]>([])
+  const [highlightedUnits, setHighlightedUnits] = useState<ProjectMapUnit[]>([])
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [resetTrigger, setResetTrigger] = useState(0)
   const [currentZoom, setCurrentZoom] = useState(6)
@@ -271,7 +285,7 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
     if (passedProjects) return
     async function loadProjects() {
       try {
-        const res = await getProjects()
+        const res = await getProjects({ forMap: true })
         if (res.success && res.data) {
           const saudiProvinces = [
             'riyadh', 'الرياض',
@@ -301,7 +315,32 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
     loadProjects()
   }, [passedProjects])
 
-  const projects = passedProjects || fetchedProjects
+  const projects = useMemo(
+    () => filterMapEligibleProjects(passedProjects || fetchedProjects),
+    [passedProjects, fetchedProjects]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadHighlightedUnits() {
+      if (!highlightedProjectId) {
+        setHighlightedUnits([])
+        return
+      }
+      try {
+        const res = await getProjectMapUnits(highlightedProjectId)
+        if (!cancelled && res.success && res.data) {
+          setHighlightedUnits(res.data)
+        } else if (!cancelled) {
+          setHighlightedUnits([])
+        }
+      } catch {
+        if (!cancelled) setHighlightedUnits([])
+      }
+    }
+    loadHighlightedUnits()
+    return () => { cancelled = true }
+  }, [highlightedProjectId, projects])
   const isRtl = i18n.language === 'ar'
 
   const regions = useMemo(() => {
@@ -309,47 +348,15 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
   }, [projects])
 
   const projectMarkers = useMemo(() => {
-    const getRegionCenter = (rName?: string): [number, number] => {
-      const lower = (rName || '').toLowerCase()
-      if (lower.includes('riyadh') || lower.includes('الرياض')) return [24.7136, 46.6753]
-      if (lower.includes('makkah') || lower.includes('مكة')) return [21.4858, 39.1925]
-      if (lower.includes('madinah') || lower.includes('المدينة')) return [24.5247, 39.5692]
-      if (lower.includes('tabuk') || lower.includes('تبوك')) return [28.3835, 36.5662]
-      if (lower.includes('eastern') || lower.includes('الشرقية')) return [26.4207, 50.0888]
-      if (lower.includes('asir') || lower.includes('عسير')) return [18.2164, 42.5053]
-      return [24.7136, 46.6753]
-    }
+    return projects.flatMap((project) => {
+      const centroid = resolveMapCentroid(project)
+      if (!centroid) return []
 
-    const fallbackCounts: Record<string, number> = {}
-
-    return projects.map((project) => {
-      let lat = project.mapCentroidLat
-      let lng = project.mapCentroidLng
-
-      if (typeof lat !== 'number' || typeof lng !== 'number') {
-        if (isPolygon(project.mapGeometryJson) && project.mapGeometryJson.coordinates[0]?.[0]) {
-          lat = project.mapGeometryJson.coordinates[0][0][1]
-          lng = project.mapGeometryJson.coordinates[0][0][0]
-        }
-      }
-
-      if (typeof lat !== 'number' || typeof lng !== 'number') {
-        const [baseLat, baseLng] = getRegionCenter(project.provinceRegion)
-        const key = `${baseLat}-${baseLng}`
-        const count = fallbackCounts[key] || 0
-        fallbackCounts[key] = count + 1
-
-        const angle = count * 2.4
-        const radius = 0.05 + Math.floor(count / 4) * 0.05
-        lat = baseLat + (count === 0 ? 0 : Math.sin(angle) * radius)
-        lng = baseLng + (count === 0 ? 0 : Math.cos(angle) * radius)
-      }
-
-      return {
+      return [{
         ...project,
-        renderLat: lat,
-        renderLng: lng,
-      }
+        renderLat: centroid.lat,
+        renderLng: centroid.lng,
+      }]
     })
   }, [projects])
 
@@ -442,6 +449,7 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
           projects={projectMarkers}
           resetTrigger={resetTrigger}
           highlightedProjectId={highlightedProjectId}
+          highlightedUnits={highlightedUnits}
         />
 
         {allPolygons.map((item, idx) =>
@@ -459,6 +467,27 @@ export default function ProjectsMap({ sx, highlightedProjectId, onProjectSelect,
             />
           ))
         )}
+
+        {highlightedProjectId && highlightedUnits.flatMap((unit) => {
+          const geom = resolveUnitMapGeometry(unit)
+          const rings = geometryToLatLngRings(geom)
+          const colors = unitStatusColors(unit.statusGroup)
+          return rings.map((ring, rIdx) => (
+            <Polygon
+              key={`unit-${unit.id}-${rIdx}`}
+              positions={ring}
+              pathOptions={{
+                color: colors.stroke,
+                weight: colors.weight,
+                fillColor: colors.fill,
+                fillOpacity: colors.fillOpacity,
+              }}
+              eventHandlers={{
+                click: () => navigate(`/unit/${unit.id}`),
+              }}
+            />
+          ))
+        })}
 
         {displayedProjects.map((project) => {
           const isHighlighted = highlightedProjectId === project.id

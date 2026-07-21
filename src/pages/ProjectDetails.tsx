@@ -18,8 +18,8 @@ import { alpha } from '@mui/material/styles'
 import { ArrowRight, FileText, Image as ImageIcon, ExternalLink, MapPin } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { getProject } from '../lib/api-client'
-import type { Project } from '../lib/types'
+import { getProject, getProjectMapUnits } from '../lib/api-client'
+import type { Project, ProjectMapUnit } from '../lib/types'
 import { isModelImageFile, isModelPdfFile } from '../lib/projectMedia'
 import { useFeatureSwitchStore } from '../lib/store'
 import RegisterInterestModal from '../components/home/RegisterInterestModal'
@@ -30,7 +30,9 @@ import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import type { ProjectModelFile } from '../lib/types'
 import InteractiveTopPlan from '../components/project/InteractiveTopPlan'
 import FinanceCalculatorModal, { SakaniMathIcon } from '../components/ui/FinanceCalculatorModal'
-import { toGoogleMapsEmbedUrl } from '../lib/googleMapsUrls'
+import ProjectUnitsMap from '../components/map/ProjectUnitsMap'
+import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../lib/googleMapsUrls'
+import { projectHasMapData, resolveMapCentroid } from '../lib/projectMap'
 
 type ProjectWithUi = Project & { hasAvailability?: boolean; availablePhasesCount?: number; nameEn?: string; locationEn?: string }
 
@@ -57,6 +59,9 @@ export default function ProjectDetails() {
   const [modelViewerOpen, setModelViewerOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState<ProjectModelFile | null>(null)
   const [activeModel, setActiveModel] = useState<ProjectModelFile | null>(null)
+  const [mapUnits, setMapUnits] = useState<ProjectMapUnit[]>([])
+  const [selectedMapUnitId, setSelectedMapUnitId] = useState<string | null>(null)
+  const [isLoadingMapUnits, setIsLoadingMapUnits] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -71,6 +76,21 @@ export default function ProjectDetails() {
     }
     load()
   }, [id])
+
+  useEffect(() => {
+    async function loadMapUnits() {
+      if (!id || !project) return
+      setIsLoadingMapUnits(true)
+      try {
+        const res = await getProjectMapUnits(id)
+        if (res.success && res.data) setMapUnits(res.data)
+        else setMapUnits([])
+      } finally {
+        setIsLoadingMapUnits(false)
+      }
+    }
+    loadMapUnits()
+  }, [id, project?.id])
 
   const title = useMemo(() => {
     if (!project) return ''
@@ -103,6 +123,28 @@ export default function ProjectDetails() {
     () => (project ? toGoogleMapsEmbedUrl(project.projectLocationUrl, projectMapFallback(project)) : null),
     [project]
   )
+
+  const googleMapsOpenUrl = useMemo(
+    () => (project ? toGoogleMapsOpenUrl(project.projectLocationUrl, projectMapFallback(project)) : null),
+    [project]
+  )
+
+  const sakaniMapCentroid = useMemo(
+    () => (project ? resolveMapCentroid(project) : undefined),
+    [project]
+  )
+
+  const hasSakaniMap = Boolean(project && projectHasMapData(project))
+  const hasUnitMap = mapUnits.length > 0
+  const isAr = i18n.language.startsWith('ar')
+
+  const handleMapUnitSelect = (unitId: string) => {
+    if (selectedMapUnitId === unitId) {
+      navigate(`/unit/${unitId}`)
+    } else {
+      setSelectedMapUnitId(unitId)
+    }
+  }
 
   useEffect(() => {
     if (!modelFiles.length) {
@@ -462,7 +504,21 @@ export default function ProjectDetails() {
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>{t('project.location', 'Location')}</Typography>
                   <Box sx={{ borderRadius: 3, overflow: 'hidden', position: 'relative', mb: 2, border: 1, borderColor: 'divider' }}>
-                    {mapEmbedUrl ? (
+                    {isLoadingMapUnits ? (
+                      <Box sx={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CircularProgress size={32} />
+                      </Box>
+                    ) : hasUnitMap || hasSakaniMap ? (
+                      <ProjectUnitsMap
+                        projectGeometry={project?.mapGeometryJson}
+                        projectCentroid={sakaniMapCentroid}
+                        units={mapUnits}
+                        selectedUnitId={selectedMapUnitId}
+                        onUnitSelect={handleMapUnitSelect}
+                        height={360}
+                        isRtl={isAr}
+                      />
+                    ) : mapEmbedUrl ? (
                       <Box sx={{ position: 'relative', width: '100%', height: 300 }}>
                         <Box
                           component="iframe"
@@ -490,6 +546,20 @@ export default function ProjectDetails() {
                       </Box>
                     )}
                   </Box>
+                  {googleMapsOpenUrl && (
+                    <Button
+                      component="a"
+                      href={googleMapsOpenUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outlined"
+                      size="small"
+                      startIcon={<ExternalLink size={16} />}
+                      sx={{ mb: 2 }}
+                    >
+                      {t('project.openInGoogleMaps', 'Open in Google Maps')}
+                    </Button>
+                  )}
                   <NearbyAmenities amenities={project.nearbyLocations} />
                 </CardContent>
               </MotionCard>

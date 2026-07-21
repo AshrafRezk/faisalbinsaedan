@@ -122,6 +122,7 @@ export async function salesforceQuery<T>(soql: string): Promise<{ records: T[]; 
 
     console.log('[Salesforce Query] ✅ SUCCESS:', {
       recordCount: result.records?.length || 0,
+      totalSize: result.totalSize,
     })
 
     return {

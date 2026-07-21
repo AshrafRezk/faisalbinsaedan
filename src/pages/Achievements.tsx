@@ -179,12 +179,19 @@ const Achievements = () => {
       {/* COUNTERS */}
       <section className="container-fbs -mt-12 pb-16">
         <div className="rounded-2xl bg-white p-12 shadow-[0_20px_50px_-20px_rgba(2,6,23,0.25)] ring-1 ring-black/5 md:p-16">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            {stats[0] && <Stat value={stats[0].value} suffix={stats[0].suffix} label={stats[0].label} />}
-            <div className="hidden md:block" style={{ width: 0 }} />
-            {stats[1] && <Stat value={stats[1].value} suffix={stats[1].suffix} label={stats[1].label} />}
-            {stats[2] && <Stat value={stats[2].value} suffix={stats[2].suffix} label={stats[2].label} />}
-            {stats[3] && <Stat value={stats[3].value} suffix={stats[3].suffix} label={stats[3].label} />}
+          <div className="flex flex-wrap justify-center gap-8">
+            {stats.slice(0, 4).map((stat) => (
+              <div
+                key={stat.label}
+                className="flex justify-center"
+                style={{
+                  flex: '0 0 calc(50% - 1rem)',
+                  maxWidth: 'calc(50% - 1rem)',
+                }}
+              >
+                <Stat value={stat.value} suffix={stat.suffix} label={stat.label} />
+              </div>
+            ))}
           </div>
         </div>
       </section>

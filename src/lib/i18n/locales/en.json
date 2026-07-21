@@ -539,6 +539,8 @@
     "noNotes": "No notes",
     "attachments": "Attachments",
     "noAttachments": "No attachments",
+    "location": "Location",
+    "nearbyLocations": "Nearby Locations",
     "models": "Unit Models",
     "modelLabel": "Model {{number}}",
     "openModelFile": "Open file",

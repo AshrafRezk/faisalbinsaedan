@@ -20,6 +20,8 @@ export interface Project {
   mapCentroidLat?: number;
   mapCentroidLng?: number;
   mapGeometryJson?: unknown;
+  /** From Map_Show_On_Map__c — Sakani map visibility */
+  showOnMap?: boolean;
   /** Salesforce Office_Location__c — sales office map link */
   officeLocationUrl?: string;
   /** Salesforce Project_Location__c — project site map (embed / Google Maps URL) */
@@ -35,6 +37,24 @@ export interface Project {
   /** Curated nearby places from Salesforce Nearby_Location__c */
   nearbyLocations?: ProjectNearbyLocation[];
   phases: Phase[];
+}
+
+/** Unit footprint for interactive project map (Sakani / Map_* fields). */
+export interface ProjectMapUnit {
+  id: string;
+  name: string;
+  status: string;
+  statusGroup: 'available' | 'reserved' | 'sold' | 'blocked' | 'unknown';
+  price?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  bua?: number;
+  buildingName?: string;
+  phaseName?: string;
+  mapCentroidLat?: number;
+  mapCentroidLng?: number;
+  mapGeometryJson?: unknown;
+  showOnMap?: boolean;
 }
 
 export type NearbyLocationCategory =

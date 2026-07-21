@@ -22,6 +22,14 @@ import {
   type AchievementsPageContent,
 } from '../achievements-page-content'
 import { buildSiteContent, SITE_CONTENT_FALLBACKS, type SiteContent } from '../site-content'
+import {
+  filterMapEligibleProjects,
+  filterMapEligibleUnits,
+  normalizeUnitStatusGroup,
+  parseMapGeometryJson,
+  resolveProjectShowOnMap,
+} from '../projectMap'
+import type { ProjectMapUnit } from '../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
@@ -186,6 +194,7 @@ interface SalesforceProjectRecord {
   Map_Centroid_Lat__c?: number
   Map_Centroid_Lng__c?: number
   Map_Geometry_JSON__c?: string
+  Map_Show_On_Map__c?: boolean
   Office_Location__c?: string
   Project_Location__c?: string
 }
@@ -479,17 +488,22 @@ export async function getProjects(options?: {
   projectType?: string
   page?: number
   pageSize?: number
+  /** Load all map-eligible projects (centroid/geometry + visible on map). No pagination. */
+  forMap?: boolean
 }) {
   const projectType = options?.projectType?.trim()
+  const forMap = options?.forMap === true
   const page = options?.page
   const pageSize = options?.pageSize ?? DEFAULT_PROJECTS_PAGE_SIZE
-  const isPaginated = typeof page === 'number' && page > 0
+  const isPaginated = !forMap && typeof page === 'number' && page > 0
 
-  const CACHE_KEY = isPaginated
-    ? `binsaedan_projects_cache_v7_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
-    : projectType
-      ? `binsaedan_projects_cache_v7_${projectType.toLowerCase()}`
-      : 'binsaedan_projects_cache_v7'
+  const CACHE_KEY = forMap
+    ? `binsaedan_projects_map_v1_${projectType?.toLowerCase() || 'all'}`
+    : isPaginated
+      ? `binsaedan_projects_cache_v8_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
+      : projectType
+        ? `binsaedan_projects_cache_v8_${projectType.toLowerCase()}`
+        : 'binsaedan_projects_cache_v8'
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Check cache
@@ -528,7 +542,8 @@ export async function getProjects(options?: {
     const limitClause = isPaginated ? ` LIMIT ${pageSize} OFFSET ${offset}` : ''
     const projectsQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
-                          Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c
+                          Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
+                          Map_Show_On_Map__c
                           FROM Project__c${whereClause}
                           ORDER BY CreatedDate DESC${limitClause}`
 
@@ -580,15 +595,8 @@ export async function getProjects(options?: {
         availableUnitsByProjectId.get(p.Id),
         p.Available_Units__c
       )
-      const mapGeometryJson = (() => {
-        const raw = (p.Map_Geometry_JSON__c || '').trim()
-        if (!raw) return undefined
-        try {
-          return JSON.parse(raw)
-        } catch {
-          return undefined
-        }
-      })()
+      const mapGeometryJson = parseMapGeometryJson(p.Map_Geometry_JSON__c)
+      const showOnMap = resolveProjectShowOnMap(p)
 
       const media = mediaByProjectId.get(p.Id) || {}
 
@@ -613,6 +621,7 @@ export async function getProjects(options?: {
         mapCentroidLat: typeof p.Map_Centroid_Lat__c === 'number' ? p.Map_Centroid_Lat__c : undefined,
         mapCentroidLng: typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined,
         mapGeometryJson,
+        showOnMap,
         logoUrl: resolveProjectLogoUrl(media, p.Logo_URL__c),
         topPlanUrl: media.topPlanUrl,
         gallery: media.gallery || [],
@@ -629,15 +638,17 @@ export async function getProjects(options?: {
       }
     })
 
-    console.log('[Projects] ✅ Loaded from Salesforce:', mappedProjects.length)
+    const resultProjects = forMap ? filterMapEligibleProjects(mappedProjects) : mappedProjects
+
+    console.log('[Projects] ✅ Loaded from Salesforce:', resultProjects.length)
 
     const pagination = isPaginated
       ? {
           page,
           pageSize,
-          totalCount: totalCount ?? mappedProjects.length,
-          totalPages: Math.ceil((totalCount ?? mappedProjects.length) / pageSize),
-          hasNextPage: page * pageSize < (totalCount ?? mappedProjects.length),
+          totalCount: totalCount ?? resultProjects.length,
+          totalPages: Math.ceil((totalCount ?? resultProjects.length) / pageSize),
+          hasNextPage: page * pageSize < (totalCount ?? resultProjects.length),
           hasPreviousPage: page > 1,
         }
       : undefined
@@ -647,16 +658,16 @@ export async function getProjects(options?: {
       CACHE_KEY,
       JSON.stringify({
         timestamp: Date.now(),
-        data: mappedProjects,
-        totalCount,
+        data: resultProjects,
+        totalCount: forMap ? resultProjects.length : totalCount,
         pagination,
       })
     )
 
     return {
       success: true,
-      data: mappedProjects,
-      totalCount,
+      data: resultProjects,
+      totalCount: forMap ? resultProjects.length : totalCount,
       pagination,
     }
   } catch (error) {
@@ -665,6 +676,84 @@ export async function getProjects(options?: {
       success: false,
       error: 'Failed to load projects from Salesforce',
     }
+  }
+}
+
+interface SalesforceUnitMapRecord {
+  Id: string
+  Name: string
+  Status__c?: string
+  Price__c?: number
+  Number_of_Bedrooms__c?: number
+  Number_of_Bathrooms__c?: number
+  BUA__c?: number
+  Map_Centroid_Lat__c?: number
+  Map_Centroid_Lng__c?: number
+  Map_Geometry_JSON__c?: string
+  Map_Show_On_Map__c?: boolean
+  Building__r?: {
+    Name?: string
+    Block__r?: {
+      Phase__r?: {
+        Name?: string
+      }
+    }
+  }
+}
+
+/** Load unit polygons/centroids for the interactive project map. */
+export async function getProjectMapUnits(projectId: string) {
+  if (!isValidSalesforceId(projectId)) {
+    return { success: false as const, error: 'Invalid project id' }
+  }
+
+  const CACHE_KEY = `binsaedan_project_map_units_v2_${projectId}`
+  const CACHE_TTL = 5 * 60 * 1000
+
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached) as { timestamp: number; data: ProjectMapUnit[] }
+      if (Date.now() - timestamp < CACHE_TTL) {
+        return { success: true as const, data }
+      }
+    }
+  } catch {
+    sessionStorage.removeItem(CACHE_KEY)
+  }
+
+  try {
+    const soql = `SELECT Id, Name, Status__c, Price__c, Number_of_Bedrooms__c, Number_of_Bathrooms__c, BUA__c,
+                  Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c, Map_Show_On_Map__c,
+                  Building__r.Name, Building__r.Block__r.Phase__r.Name
+                  FROM Unit__c
+                  WHERE Building__r.Block__r.Phase__r.Project__c = '${projectId}'
+                  ORDER BY Name`
+
+    const result = await salesforceQuery<SalesforceUnitMapRecord>(soql)
+    const mapped = (result.records || []).map((u) => ({
+      id: u.Id,
+      name: u.Name,
+      status: (u.Status__c || '').trim() || 'Unknown',
+      statusGroup: normalizeUnitStatusGroup(u.Status__c),
+      price: typeof u.Price__c === 'number' ? u.Price__c : undefined,
+      bedrooms: typeof u.Number_of_Bedrooms__c === 'number' ? u.Number_of_Bedrooms__c : undefined,
+      bathrooms: typeof u.Number_of_Bathrooms__c === 'number' ? u.Number_of_Bathrooms__c : undefined,
+      bua: typeof u.BUA__c === 'number' ? u.BUA__c : undefined,
+      buildingName: u.Building__r?.Name?.trim() || undefined,
+      phaseName: u.Building__r?.Block__r?.Phase__r?.Name?.trim() || undefined,
+      mapCentroidLat: typeof u.Map_Centroid_Lat__c === 'number' ? u.Map_Centroid_Lat__c : undefined,
+      mapCentroidLng: typeof u.Map_Centroid_Lng__c === 'number' ? u.Map_Centroid_Lng__c : undefined,
+      mapGeometryJson: parseMapGeometryJson(u.Map_Geometry_JSON__c),
+      showOnMap: u.Map_Show_On_Map__c !== false,
+    }))
+
+    const data = filterMapEligibleUnits(mapped)
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data }))
+    return { success: true as const, data }
+  } catch (error) {
+    console.error('[ProjectMapUnits] Failed to load:', error)
+    return { success: false as const, error: 'Failed to load project map units' }
   }
 }
 
@@ -844,6 +933,7 @@ export async function getProject(id: string) {
     const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
+                          Map_Show_On_Map__c,
                           Project_Location__c, Office_Location__c
                           FROM Project__c 
                           WHERE Id = '${id}'
@@ -865,15 +955,8 @@ export async function getProject(id: string) {
     const media = pickMediaFromAttachments(allAttachments)
     const mapCentroidLat = typeof p.Map_Centroid_Lat__c === 'number' ? p.Map_Centroid_Lat__c : undefined
     const mapCentroidLng = typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined
-    const mapGeometryJson = (() => {
-      const raw = (p.Map_Geometry_JSON__c || '').trim()
-      if (!raw) return undefined
-      try {
-        return JSON.parse(raw)
-      } catch {
-        return undefined
-      }
-    })()
+    const mapGeometryJson = parseMapGeometryJson(p.Map_Geometry_JSON__c)
+    const showOnMap = resolveProjectShowOnMap(p)
 
     return {
       success: true,
@@ -896,6 +979,7 @@ export async function getProject(id: string) {
         mapCentroidLat,
         mapCentroidLng,
         mapGeometryJson,
+        showOnMap,
         projectLocationUrl: (p.Project_Location__c || '').trim()
           ? normalizeUrl((p.Project_Location__c as string).trim())
           : undefined,

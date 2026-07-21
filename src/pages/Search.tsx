@@ -40,6 +40,7 @@ export default function Search() {
   const [isLoading, setIsLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'projects'>('grid')
   const [projects, setProjects] = useState<Project[]>([])
+  const [mapProjects, setMapProjects] = useState<Project[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
   const [projectsTotalCount, setProjectsTotalCount] = useState(0)
   const [projectsPagination, setProjectsPagination] = useState<{
@@ -109,22 +110,28 @@ export default function Search() {
       if (viewMode !== 'projects') return
       setIsLoadingProjects(true)
       try {
-        const res = await getProjects({
-          projectType: projectTypeFilter,
-          page: projectsPage,
-          pageSize: PROJECTS_PAGE_SIZE,
-        })
-        if (res.success && res.data) {
-          setProjects(res.data)
-          setProjectsTotalCount(res.totalCount ?? res.data.length)
+        const [listRes, mapRes] = await Promise.all([
+          getProjects({
+            projectType: projectTypeFilter,
+            page: projectsPage,
+            pageSize: PROJECTS_PAGE_SIZE,
+          }),
+          getProjects({
+            projectType: projectTypeFilter,
+            forMap: true,
+          }),
+        ])
+        if (listRes.success && listRes.data) {
+          setProjects(listRes.data)
+          setProjectsTotalCount(listRes.totalCount ?? listRes.data.length)
           setProjectsPagination(
-            res.pagination
+            listRes.pagination
               ? {
-                  hasNextPage: res.pagination.hasNextPage,
-                  hasPreviousPage: res.pagination.hasPreviousPage,
+                  hasNextPage: listRes.pagination.hasNextPage,
+                  hasPreviousPage: listRes.pagination.hasPreviousPage,
                 }
               : {
-                  hasNextPage: projectsPage * PROJECTS_PAGE_SIZE < (res.totalCount ?? res.data.length),
+                  hasNextPage: projectsPage * PROJECTS_PAGE_SIZE < (listRes.totalCount ?? listRes.data.length),
                   hasPreviousPage: projectsPage > 1,
                 }
           )
@@ -133,9 +140,15 @@ export default function Search() {
           setProjectsTotalCount(0)
           setProjectsPagination(null)
         }
+        if (mapRes.success && mapRes.data) {
+          setMapProjects(mapRes.data)
+        } else {
+          setMapProjects([])
+        }
       } catch (e) {
         console.error('Error loading projects:', e)
         setProjects([])
+        setMapProjects([])
         setProjectsTotalCount(0)
         setProjectsPagination(null)
       } finally {
@@ -355,7 +368,7 @@ export default function Search() {
             <Grid size={{ xs: 12, md: 8 }}>
               <Box sx={{ width: '100%', height: { xs: 360, sm: 480, md: 600 } }}>
                 <ProjectsMap
-                  projects={projects}
+                  projects={mapProjects}
                   highlightedProjectId={filters.projectId || null}
                   onProjectSelect={(id) => id && handleProjectClick(id)}
                 />

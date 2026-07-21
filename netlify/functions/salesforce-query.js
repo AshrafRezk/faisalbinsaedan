@@ -83,29 +83,44 @@ exports.handler = async (event) => {
       };
     }
 
-    // Step 2: Execute SOQL query
+    // Step 2: Execute SOQL query (paginate — REST API returns 200 records per page by default)
     const encodedQuery = encodeURIComponent(soql);
-    const queryUrl = `${tokenInstanceUrl}/services/data/v59.0/query?q=${encodedQuery}`;
+    let queryUrl = `${tokenInstanceUrl}/services/data/v59.0/query?q=${encodedQuery}`;
+    const allRecords = [];
+    let totalSize;
 
     try {
-      const queryResponse = await fetch(queryUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      while (queryUrl) {
+        const queryResponse = await fetch(queryUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!queryResponse.ok) {
-        const errorText = await queryResponse.text();
-        console.error('[Salesforce Query Function] Query failed:', queryResponse.status, errorText);
-        return {
-          statusCode: queryResponse.status,
-          body: JSON.stringify({ error: 'Salesforce query failed', details: errorText }),
-        };
+        if (!queryResponse.ok) {
+          const errorText = await queryResponse.text();
+          console.error('[Salesforce Query Function] Query failed:', queryResponse.status, errorText);
+          return {
+            statusCode: queryResponse.status,
+            body: JSON.stringify({ error: 'Salesforce query failed', details: errorText }),
+          };
+        }
+
+        const queryData = await queryResponse.json();
+        if (typeof queryData.totalSize === 'number') {
+          totalSize = queryData.totalSize;
+        }
+        if (Array.isArray(queryData.records)) {
+          allRecords.push(...queryData.records);
+        }
+
+        if (queryData.done || !queryData.nextRecordsUrl) {
+          break;
+        }
+        queryUrl = `${tokenInstanceUrl}${queryData.nextRecordsUrl}`;
       }
-
-      const queryData = await queryResponse.json();
 
       return {
         statusCode: 200,
@@ -114,8 +129,8 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({
           success: true,
-          records: queryData.records || [],
-          totalSize: typeof queryData.totalSize === 'number' ? queryData.totalSize : undefined,
+          records: allRecords,
+          totalSize: typeof totalSize === 'number' ? totalSize : allRecords.length,
         }),
       };
     } catch (error) {

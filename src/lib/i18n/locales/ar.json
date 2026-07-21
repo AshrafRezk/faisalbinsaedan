@@ -543,6 +543,8 @@
     "noNotes": "لا توجد ملاحظات",
     "attachments": "المرفقات والصور",
     "noAttachments": "لا توجد مرفقات",
+    "location": "الموقع",
+    "nearbyLocations": "المواقع القريبة",
     "models": "موديلات الوحدات",
     "modelLabel": "الموديل {{number}}",
     "openModelFile": "فتح الملف",

@@ -743,7 +743,6 @@ export default function AboutUs() {
                         sx={{
                           color: 'common.white',
                           fontWeight: 800,
-                          fontFamily: "'Playfair Display', Georgia, serif",
                           lineHeight: 1.2,
                         }}
                       >

@@ -212,7 +212,7 @@ async function uploadSupplierPdf(instanceUrl, accessToken, leadId, attachment) {
   return versionResponse.json()
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return json(405, { success: false, error: 'Method not allowed' })
   }

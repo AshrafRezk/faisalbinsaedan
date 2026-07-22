@@ -91,7 +91,7 @@ async function getSalesforceAccessToken() {
   return { accessToken, instanceUrl: tokenInstanceUrl }
 }
  
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return json(405, { success: false, error: 'Method not allowed' })
   }

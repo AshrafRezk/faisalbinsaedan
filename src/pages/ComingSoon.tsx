@@ -85,7 +85,7 @@ export default function ComingSoon() {
                 fontWeight: 700,
                 mb: 2,
                 fontSize: { xs: '3rem', md: '4rem' },
-                fontFamily: '"IBM Plex Sans Arabic", sans-serif',
+                fontFamily: '"PP Neue Montreal Arabic", system-ui, sans-serif',
               }}
             >
               قريباً
@@ -110,7 +110,7 @@ export default function ComingSoon() {
                 color: 'rgba(255, 255, 255, 0.85)',
                 mb: 1,
                 fontSize: '1.1rem',
-                fontFamily: '"IBM Plex Sans Arabic", sans-serif',
+                fontFamily: '"PP Neue Montreal Arabic", system-ui, sans-serif',
               }}
               dir="rtl"
             >

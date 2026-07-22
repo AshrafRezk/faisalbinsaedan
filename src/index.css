@@ -1,5 +1,13 @@
 @font-face {
   font-family: 'PP Telegraf';
+  src: url('/fonts/english/PPTelegraf-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Telegraf';
   src: url('/fonts/english/PPTelegraf-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
@@ -8,8 +16,8 @@
 
 @font-face {
   font-family: 'PP Telegraf';
-  src: url('/fonts/english/PPTelegraf-Light.otf') format('opentype');
-  font-weight: 300;
+  src: url('/fonts/english/PPTelegraf-Medium.woff2') format('woff2');
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
@@ -46,12 +54,23 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'PP Neue Montreal Arabic';
+  src: url('/fonts/arabic/PPNeueMontrealArabic-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  --font-sans: 'PP Telegraf', system-ui, sans-serif;
+  --font-display: 'PP Telegraf', system-ui, sans-serif;
+
   /* Match inspire-hub FBS theme tokens (for Tailwind `bg-card`, `text-muted-foreground`, gradients, etc.) */
   --background: 208 38% 96%;
   --foreground: 210 64% 18%;
@@ -110,27 +129,33 @@
 }
 
 html {
-  font-family: 'PP Telegraf', system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+}
+
+[dir='rtl'] {
+  --font-sans: 'PP Neue Montreal Arabic', system-ui, sans-serif;
+  --font-display: 'PP Neue Montreal Arabic', system-ui, sans-serif;
 }
 
 body {
   min-height: 100dvh;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family: inherit;
 }
 
-[dir='rtl'] body {
-  font-family: 'PP Neue Montreal Arabic', system-ui, sans-serif;
+#root {
+  font-family: inherit;
 }
 
 #root h1,
 #root h2,
 #root h3,
 #root h4 {
-  font-family: 'PP Telegraf', system-ui, sans-serif;
+  font-family: var(--font-display);
   letter-spacing: -0.01em;
 }
 
@@ -138,7 +163,6 @@ body {
 [dir='rtl'] #root h2,
 [dir='rtl'] #root h3,
 [dir='rtl'] #root h4 {
-  font-family: 'PP Neue Montreal Arabic', system-ui, sans-serif;
   font-weight: 700;
 }
 

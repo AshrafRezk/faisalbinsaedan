@@ -1,8 +1,6 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type Direction } from '@mui/material/styles'
 
-// Faisal Bin Saedan Brand Colors
-export const theme = createTheme({
-  direction: 'rtl',
+const sharedThemeOptions = {
   palette: {
     primary: {
       main: '#1a365d',
@@ -35,25 +33,6 @@ export const theme = createTheme({
       light: '#fff5f5',
     },
   },
-  typography: {
-    fontFamily: '"PP Neue Montreal Arabic", "PP Telegraf", system-ui, sans-serif',
-    h1: {
-      fontWeight: 600,
-      fontSize: '2rem',
-    },
-    h2: {
-      fontWeight: 600,
-      fontSize: '1.5rem',
-    },
-    h3: {
-      fontWeight: 600,
-      fontSize: '1.25rem',
-    },
-    button: {
-      textTransform: 'none',
-      fontWeight: 500,
-    },
-  },
   components: {
     MuiButton: {
       styleOverrides: {
@@ -81,5 +60,37 @@ export const theme = createTheme({
       },
     },
   },
-});
+} as const
 
+export function createAppTheme(direction: Direction) {
+  const isRtl = direction === 'rtl'
+
+  return createTheme({
+    ...sharedThemeOptions,
+    direction,
+    typography: {
+      fontFamily: isRtl
+        ? '"PP Neue Montreal Arabic", system-ui, sans-serif'
+        : '"PP Telegraf", system-ui, sans-serif',
+      h1: {
+        fontWeight: isRtl ? 700 : 600,
+        fontSize: '2rem',
+      },
+      h2: {
+        fontWeight: isRtl ? 700 : 600,
+        fontSize: '1.5rem',
+      },
+      h3: {
+        fontWeight: isRtl ? 600 : 600,
+        fontSize: '1.25rem',
+      },
+      button: {
+        textTransform: 'none',
+        fontWeight: 500,
+      },
+    },
+  })
+}
+
+/** Default theme for type inference / tests */
+export const theme = createAppTheme('rtl')

@@ -3,7 +3,7 @@
  * Server-side function to fetch feature switches from Salesforce Apex REST endpoint
  */
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   // Allow GET requests
   if (event.httpMethod !== 'GET') {
     return {

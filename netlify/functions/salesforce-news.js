@@ -4,7 +4,7 @@
  * Handles authentication and forwards request parameters.
  */
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
     // Only allow GET requests
     if (event.httpMethod !== 'GET') {
         return {

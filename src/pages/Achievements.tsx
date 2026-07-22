@@ -48,8 +48,8 @@ const Stat = ({ value, label, suffix = "" }: { value: number; label: string; suf
   return (
     <div className="reveal text-center">
       <div
-        className="text-5xl font-bold text-primary md:text-6xl"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: "-0.01em" }}
+        className="text-5xl font-bold font-display text-primary md:text-6xl"
+        style={{ letterSpacing: '-0.01em' }}
       >
         <span ref={ref}>0</span>
         <span

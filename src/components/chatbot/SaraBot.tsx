@@ -114,7 +114,7 @@ export default function SaraBot() {
                 overflow: 'hidden',
                 bgcolor: '#f8fafc',
                 border: '1px solid #e2e8f0',
-                fontFamily: isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"
+                fontFamily: isRtl ? "'PP Neue Montreal Arabic', system-ui, sans-serif" : "'PP Telegraf', system-ui, sans-serif"
               }}
             >
               {/* Header */}

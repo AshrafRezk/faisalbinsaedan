@@ -5,9 +5,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"PP Telegraf"', 'system-ui', 'sans-serif'],
-        display: ['"PP Telegraf"', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)'],
+        display: ['var(--font-display)'],
         arabic: ['"PP Neue Montreal Arabic"', 'system-ui', 'sans-serif'],
+        english: ['"PP Telegraf"', 'system-ui', 'sans-serif'],
       },
       colors: {
         primary: 'hsl(var(--primary))',

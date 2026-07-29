@@ -18,7 +18,7 @@
     "@mui/system": "^7.3.6",
     "@react-google-maps/api": "^2.20.8",
     "bcryptjs": "^3.0.3",
-    "flippy-pdf": "^2.0.0",
+    "flippy-pdf": "file:./packages/flippy-pdf",
     "framer-motion": "^12.23.26",
     "grid2": "^0.6.0",
     "i18next": "^25.7.3",

@@ -544,6 +544,7 @@
     "attachments": "المرفقات والصور",
     "noAttachments": "لا توجد مرفقات",
     "location": "الموقع",
+    "summary": "نبذة عن المشروع",
     "nearbyLocations": "المواقع القريبة",
     "models": "موديلات الوحدات",
     "modelLabel": "الموديل {{number}}",

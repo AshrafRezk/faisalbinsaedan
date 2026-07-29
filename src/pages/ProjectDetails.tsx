@@ -137,6 +137,13 @@ export default function ProjectDetails() {
   const hasSakaniMap = Boolean(project && projectHasMapData(project))
   const hasUnitMap = mapUnits.length > 0
   const isAr = i18n.language.startsWith('ar')
+  const projectSummary = useMemo(() => {
+    if (!project) return ''
+    const primary = isAr ? project.descriptionAr : project.description
+    if (typeof primary === 'string' && primary.trim()) return primary.trim()
+    const fallback = isAr ? project.description : project.descriptionAr
+    return typeof fallback === 'string' ? fallback.trim() : ''
+  }, [project, isAr])
 
   const handleMapUnitSelect = (unitId: string) => {
     if (selectedMapUnitId === unitId) {
@@ -308,6 +315,23 @@ export default function ProjectDetails() {
                 <Typography variant="h2" sx={{ color: 'white', fontWeight: 'bold', textShadow: '0 4px 12px rgba(0,0,0,0.3)', mb: 1, fontSize: { xs: '2.5rem', md: '3.5rem' } }}>
                   {title}
                 </Typography>
+                {projectSummary && (
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: 'rgba(255,255,255,0.92)',
+                      fontWeight: 400,
+                      lineHeight: 1.7,
+                      mb: 1.5,
+                      maxWidth: { xs: '100%', md: 640 },
+                      textShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                      whiteSpace: 'pre-line',
+                      fontSize: { xs: '1rem', md: '1.15rem' },
+                    }}
+                  >
+                    {projectSummary}
+                  </Typography>
+                )}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'rgba(255,255,255,0.9)' }}>
                   <MapPin size={18} />
                   <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
@@ -473,8 +497,8 @@ export default function ProjectDetails() {
               >
                 <CardContent sx={{ p: 0, position: 'relative' }}>
                   <Box sx={{ position: 'absolute', top: 24, left: 24, zIndex: 10, pointerEvents: 'none' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'white' }}>
-                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'text.primary' }}>
+                      <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'rgba(0,0,0,0.05)', backdropFilter: 'blur(10px)' }}>
                         <FileText size={24} />
                       </Box>
                       <Typography variant="h6" fontWeight="bold">{t('project.brochure', 'Project Brochure')}</Typography>

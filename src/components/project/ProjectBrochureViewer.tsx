@@ -85,10 +85,10 @@ export default function ProjectBrochureViewer({ pdfUrl }: ProjectBrochureViewerP
         width: '100%', 
         height: isFullscreen ? '100vh' : { xs: 400, md: 600 },
         position: 'relative',
-        bgcolor: '#1a1a1a',
+        bgcolor: '#ffffff',
         borderRadius: isFullscreen ? 0 : 4,
         overflow: 'hidden',
-        boxShadow: isFullscreen ? 'none' : '0 10px 30px rgba(0,0,0,0.1)',
+        boxShadow: isFullscreen ? 'none' : '0 4px 20px rgba(0,0,0,0.08)',
         direction: 'ltr',
         unicodeBidi: 'isolate',
       }}
@@ -104,11 +104,11 @@ export default function ProjectBrochureViewer({ pdfUrl }: ProjectBrochureViewerP
         display: 'flex', 
         justifyContent: 'flex-end',
         alignItems: 'center',
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
+        background: 'linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, transparent 100%)',
         pointerEvents: 'none' // allow clicking through where empty
       }}>
         <Box sx={{ display: 'flex', gap: 1, pointerEvents: 'auto' }}>
-          <IconButton onClick={toggleFullscreen} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+          <IconButton onClick={toggleFullscreen} sx={{ color: 'text.primary', bgcolor: 'rgba(0,0,0,0.05)', '&:hover': { bgcolor: 'rgba(0,0,0,0.1)' } }}>
             {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
           </IconButton>
         </Box>
@@ -121,7 +121,7 @@ export default function ProjectBrochureViewer({ pdfUrl }: ProjectBrochureViewerP
         sx={{ 
           width: '100%', 
           height: '100%',
-          bgcolor: 'transparent', // Let wrapper's dark background show through the empty spaces around the book
+          bgcolor: 'transparent',
           direction: 'ltr',
           unicodeBidi: 'isolate',
           '& .ic-root': {
@@ -139,11 +139,11 @@ export default function ProjectBrochureViewer({ pdfUrl }: ProjectBrochureViewerP
           flexDirection: 'column',
           alignItems: 'center', 
           justifyContent: 'center',
-          bgcolor: '#1a1a1a',
+          bgcolor: '#ffffff',
           zIndex: 50,
-          color: 'white'
+          color: 'text.primary'
         }}>
-          <CircularProgress color="inherit" size={48} sx={{ mb: 2 }} />
+          <CircularProgress color="primary" size={48} sx={{ mb: 2 }} />
           <Typography variant="h6" fontWeight="300">
             {t('project.loadingBrochure', 'Loading Interactive Brochure...')}
           </Typography>
@@ -159,9 +159,9 @@ export default function ProjectBrochureViewer({ pdfUrl }: ProjectBrochureViewerP
           flexDirection: 'column',
           alignItems: 'center', 
           justifyContent: 'center',
-          bgcolor: '#1a1a1a',
+          bgcolor: '#ffffff',
           zIndex: 50,
-          color: 'white'
+          color: 'text.primary'
         }}>
           <Typography variant="h6" color="error" gutterBottom>
             {t('project.errorLoadingBrochure', 'Failed to load brochure')}

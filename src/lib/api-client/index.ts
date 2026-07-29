@@ -197,6 +197,8 @@ interface SalesforceProjectRecord {
   Map_Show_On_Map__c?: boolean
   Office_Location__c?: string
   Project_Location__c?: string
+  Project_Summary_English__c?: string
+  Project_Summary_Arabic__c?: string
 }
 
 interface SalesforceNearbyLocationRecord {
@@ -213,6 +215,19 @@ const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
 
 function isValidSalesforceId(id: string): boolean {
   return SALESFORCE_ID_PATTERN.test(id)
+}
+
+function mapProjectSummaries(p: SalesforceProjectRecord) {
+  const description = (p.Project_Summary_English__c || '').trim() || undefined
+  const descriptionAr = (p.Project_Summary_Arabic__c || '').trim() || undefined
+  return { description, descriptionAr }
+}
+
+function mapProjectDisplayName(p: SalesforceProjectRecord) {
+  return {
+    name: p.Name,
+    nameAr: p.Name,
+  }
 }
 
 interface SalesforceContentDocumentLinkRecord {
@@ -316,19 +331,18 @@ async function getProjectNearbyLocations(projectId: string): Promise<ProjectNear
       })
       .filter((item): item is ProjectNearbyLocation => item !== null)
 
-  // Query tiers — use the richest shape the org supports.
-  // Current org: Minutes__c yes; Sort_Order__c / Is_Active__c not yet.
+  // Query tiers — use the richest shape the org supports (Sort_Order__c / Is_Active__c optional).
   type NearbyQueryMode = 'full' | 'withMinutes' | 'base'
-  const cacheKey = 'nearby_location_soql_mode_v3'
+  const cacheKey = 'nearby_location_soql_mode_v4'
   const modes: Record<NearbyQueryMode, string> = {
-    full: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, Sort_Order__c
-           FROM Nearby_Location__c
-           WHERE Project__c = '${projectId}' AND Is_Active__c = true
-           ORDER BY Sort_Order__c ASC NULLS LAST, CreatedDate ASC`,
     withMinutes: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, CreatedDate
                   FROM Nearby_Location__c
                   WHERE Project__c = '${projectId}'
                   ORDER BY CreatedDate ASC`,
+    full: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, Minutes__c, Sort_Order__c
+           FROM Nearby_Location__c
+           WHERE Project__c = '${projectId}' AND Is_Active__c = true
+           ORDER BY Sort_Order__c ASC NULLS LAST, CreatedDate ASC`,
     base: `SELECT Id, Name_English__c, Name_Arabic__c, Category__c, CreatedDate
            FROM Nearby_Location__c
            WHERE Project__c = '${projectId}'
@@ -338,9 +352,8 @@ async function getProjectNearbyLocations(projectId: string): Promise<ProjectNear
   const tier: Record<NearbyQueryMode, number> = { base: 0, withMinutes: 1, full: 2 }
   const cached = sessionStorage.getItem(cacheKey) as NearbyQueryMode | null
 
-  // Always try modes at or above cached tier first so new SF fields (e.g. Minutes__c) are picked up
-  // without requiring users to clear sessionStorage manually.
-  const allModes: NearbyQueryMode[] = ['full', 'withMinutes', 'base']
+  // Prefer withMinutes first — prod may not have Sort_Order__c / Is_Active__c yet.
+  const allModes: NearbyQueryMode[] = ['withMinutes', 'full', 'base']
   const order: NearbyQueryMode[] = cached
     ? [...allModes.filter((m) => tier[m] >= tier[cached]), ...allModes.filter((m) => tier[m] < tier[cached])]
     : allModes
@@ -500,10 +513,10 @@ export async function getProjects(options?: {
   const CACHE_KEY = forMap
     ? `binsaedan_projects_map_v1_${projectType?.toLowerCase() || 'all'}`
     : isPaginated
-      ? `binsaedan_projects_cache_v8_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
+      ? `binsaedan_projects_cache_v9_${projectType?.toLowerCase() || 'all'}_p${page}_s${pageSize}`
       : projectType
-        ? `binsaedan_projects_cache_v8_${projectType.toLowerCase()}`
-        : 'binsaedan_projects_cache_v8'
+        ? `binsaedan_projects_cache_v9_${projectType.toLowerCase()}`
+        : 'binsaedan_projects_cache_v9'
   const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   // Check cache
@@ -543,7 +556,8 @@ export async function getProjects(options?: {
     const projectsQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
-                          Map_Show_On_Map__c
+                          Map_Show_On_Map__c,
+                          Project_Summary_English__c, Project_Summary_Arabic__c
                           FROM Project__c${whereClause}
                           ORDER BY CreatedDate DESC${limitClause}`
 
@@ -597,13 +611,15 @@ export async function getProjects(options?: {
       )
       const mapGeometryJson = parseMapGeometryJson(p.Map_Geometry_JSON__c)
       const showOnMap = resolveProjectShowOnMap(p)
+      const { description, descriptionAr } = mapProjectSummaries(p)
+      const names = mapProjectDisplayName(p)
 
       const media = mediaByProjectId.get(p.Id) || {}
 
       return {
         id: p.Id,
-        name: p.Name,
-        nameAr: p.Name,
+        name: names.name,
+        nameAr: names.nameAr,
         provinceRegion: p.Province_Region__c?.trim() || undefined,
         city: p.City__c?.trim() || undefined,
         projectType: p.Project_Type__c?.trim() || undefined,
@@ -622,6 +638,8 @@ export async function getProjects(options?: {
         mapCentroidLng: typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined,
         mapGeometryJson,
         showOnMap,
+        description,
+        descriptionAr,
         logoUrl: resolveProjectLogoUrl(media, p.Logo_URL__c),
         topPlanUrl: media.topPlanUrl,
         gallery: media.gallery || [],
@@ -934,6 +952,7 @@ export async function getProject(id: string) {
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
                           Map_Show_On_Map__c,
+                          Project_Summary_English__c, Project_Summary_Arabic__c,
                           Project_Location__c, Office_Location__c
                           FROM Project__c 
                           WHERE Id = '${id}'
@@ -957,13 +976,15 @@ export async function getProject(id: string) {
     const mapCentroidLng = typeof p.Map_Centroid_Lng__c === 'number' ? p.Map_Centroid_Lng__c : undefined
     const mapGeometryJson = parseMapGeometryJson(p.Map_Geometry_JSON__c)
     const showOnMap = resolveProjectShowOnMap(p)
+    const { description, descriptionAr } = mapProjectSummaries(p)
+    const names = mapProjectDisplayName(p)
 
     return {
       success: true,
       data: {
         id: p.Id,
-        name: p.Name,
-        nameAr: p.Name,
+        name: names.name,
+        nameAr: names.nameAr,
         projectType: p.Project_Type__c?.trim() || undefined,
         location: [p.District__c, p.City__c, p.Province_Region__c]
           .map((v) => (typeof v === 'string' ? v.trim() : v))
@@ -980,6 +1001,8 @@ export async function getProject(id: string) {
         mapCentroidLng,
         mapGeometryJson,
         showOnMap,
+        description,
+        descriptionAr,
         projectLocationUrl: (p.Project_Location__c || '').trim()
           ? normalizeUrl((p.Project_Location__c as string).trim())
           : undefined,

@@ -540,6 +540,7 @@
     "attachments": "Attachments",
     "noAttachments": "No attachments",
     "location": "Location",
+    "summary": "About the Project",
     "nearbyLocations": "Nearby Locations",
     "models": "Unit Models",
     "modelLabel": "Model {{number}}",

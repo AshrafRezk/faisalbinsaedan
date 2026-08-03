@@ -1,5 +1,31 @@
 // netlify/functions/salesforce-lead.js
 
+function normalizeSaudiPhone(raw) {
+    let digits = String(raw || '').replace(/\D/g, '')
+    if (digits.startsWith('00')) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length === 10) digits = `966${digits.slice(1)}`
+    if (digits.length === 9 && digits.startsWith('5')) digits = `966${digits}`
+    return digits
+}
+
+function friendlySalesforceError(errorText) {
+    try {
+        const parsed = JSON.parse(errorText)
+        const items = Array.isArray(parsed) ? parsed : [parsed]
+        const messages = items.map((item) => item?.message).filter(Boolean)
+        if (messages.length) {
+            const joined = messages.join(' ')
+            if (/phone/i.test(joined) && /saudi|invalid/i.test(joined)) {
+                return 'Please enter a valid Saudi phone number: 12 digits including country code 966, without +. Example: 966501234567'
+            }
+            return messages.map((m) => String(m).replace(/^[A-Za-z0-9_]+:\s*/, '')).join(' ')
+        }
+    } catch {
+        // fall through
+    }
+    return 'We could not submit your request. Please check your details and try again.'
+}
+
 export const handler = async (event) => {
     // Only allow POST
     if (event.httpMethod !== 'POST') {
@@ -20,6 +46,8 @@ export const handler = async (event) => {
                 body: JSON.stringify({ error: 'Missing required fields' }),
             };
         }
+
+        const normalizedPhone = normalizeSaudiPhone(phone)
 
         // 1. Get Salesforce Token
         const tokenUrl = `${process.env.SALESFORCE_INSTANCE_URL}/services/oauth2/token`;
@@ -52,7 +80,7 @@ export const handler = async (event) => {
             LastName: name,
             Company: customerType === 'Company' ? 'TBD Company' : 'Private Customer',
             Mobile_Country__c: country,
-            Phone: phone,
+            Phone: normalizedPhone,
             Region_Province__c: region,
             Lead_City__c: city,
             LeadSource: 'Website Bot',
@@ -80,7 +108,7 @@ export const handler = async (event) => {
             console.error('SF Lead Creation Failed', errorData);
             return {
                 statusCode: sfRes.status,
-                body: JSON.stringify({ error: 'Salesforce API failed', details: errorData }),
+                body: JSON.stringify({ error: friendlySalesforceError(errorData) }),
             };
         }
 

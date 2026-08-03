@@ -327,7 +327,9 @@
     "firstNamePlaceholder": "Ahmed",
     "lastNamePlaceholder": "Al-Rashid",
     "emailPlaceholder": "ahmed@example.com",
-    "phonePlaceholder": "+966 5X XXX XXXX",
+    "phonePlaceholder": "501234567",
+    "phoneHint": "Enter mobile number without country code",
+    "countryCode": "Country code",
     "messagePlaceholder": "How can we help you?",
     "supplierPdfLabel": "Supplier document (PDF)",
     "supplierPdfHint": "Upload your company profile or registration document (PDF, max 5 MB).",
@@ -338,7 +340,8 @@
     "submitting": "Sending...",
     "messageSent": "Your message has been sent!",
     "willContactSoon": "We will contact you soon",
-    "errorOccurred": "An error occurred. Please try again."
+    "errorOccurred": "An error occurred. Please try again.",
+    "phoneSaudiInvalid": "Please enter a valid Saudi mobile number (without country code). Example: 501234567"
   },
   "registerInterest": {
     "title": "Register Your Interest",

@@ -19,6 +19,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { createLead, getProjects } from '../../lib/api-client'
+import { friendlyLeadErrorMessage } from '../../lib/salesforce/friendlyError'
+import {
+  DEFAULT_LEAD_COUNTRY_CODE,
+  LEAD_COUNTRY_CODES,
+  countryCodeLabel,
+} from '../../lib/leadCountryCodes'
 import type { Project } from '../../lib/types'
 
 const getSchema = (t: (key: string) => string) =>
@@ -27,6 +33,7 @@ const getSchema = (t: (key: string) => string) =>
       name: z.string().min(2, t('registerInterest.firstNameRequired')),
       companyName: z.string().optional(),
       email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
+      countryCode: z.string().min(2),
       phone: z.string().min(9, t('registerInterest.phoneInvalid')),
       projectId: z.string().optional(),
       rentalBudget: z.string().optional(),
@@ -75,6 +82,7 @@ export default function CommercialLeadForm() {
       name: '',
       companyName: '',
       email: '',
+      countryCode: DEFAULT_LEAD_COUNTRY_CODE,
       phone: '',
       projectId: '',
       rentalBudget: '',
@@ -130,9 +138,15 @@ export default function CommercialLeadForm() {
         firstName,
         lastName,
         phone: data.phone,
+        countryCode: data.countryCode,
         email: data.email || '',
         company: data.companyName || undefined,
         message,
+        unitType: 'Rental',
+        region: selectedProject?.provinceRegion || undefined,
+        city: selectedProject?.city || undefined,
+        interestedProjectName: projectLabel || undefined,
+        interestedProjectId: data.projectId || undefined,
         rentalProjectId: data.projectId || undefined,
         rentalBudget: parseOptionalNumber(data.rentalBudget),
         numberOfRooms: parseOptionalNumber(data.numberOfRooms),
@@ -145,7 +159,7 @@ export default function CommercialLeadForm() {
         reset()
         setTimeout(() => setIsSuccess(false), 5000)
       } else {
-        setError(response.error || t('contact.errorOccurred'))
+        setError(friendlyLeadErrorMessage(response.error, t('contact.errorOccurred')))
       }
     } catch {
       setError(t('contact.errorOccurred'))
@@ -202,7 +216,29 @@ export default function CommercialLeadForm() {
             helperText={errors.email?.message}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Controller
+            name="countryCode"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth required>
+                <InputLabel>{t('contact.countryCode')}</InputLabel>
+                <Select
+                  label={t('contact.countryCode')}
+                  {...field}
+                  value={field.value || DEFAULT_LEAD_COUNTRY_CODE}
+                >
+                  {LEAD_COUNTRY_CODES.map((code) => (
+                    <MenuItem key={code.value} value={code.value}>
+                      {countryCodeLabel(code, isAr)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             {...register('phone')}
             label={t('contact.phone')}
@@ -211,7 +247,7 @@ export default function CommercialLeadForm() {
             fullWidth
             required
             error={!!errors.phone}
-            helperText={errors.phone?.message}
+            helperText={errors.phone?.message || t('contact.phoneHint')}
           />
         </Grid>
 

@@ -169,6 +169,14 @@ export interface Lead {
   lastName: string;
   email: string;
   phone: string;
+  /** Dial code for Mobile_Country__c, e.g. "+966" */
+  countryCode?: string;
+  /** Region_Province__c */
+  region?: string;
+  /** Lead_City__c */
+  city?: string;
+  /** Unit_Type__c — e.g. "Rental" for commercial leads */
+  unitType?: string;
   profile?: "Investor" | "Customer" | "Supplier";
   source: "PWA";
   interestedProjectId?: string;

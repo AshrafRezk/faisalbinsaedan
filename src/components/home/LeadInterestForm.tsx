@@ -22,6 +22,12 @@ import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { createLead, getProjects } from '../../lib/api-client'
 import { salesforceIdsEqual } from '../../lib/salesforceIds'
+import { friendlyLeadErrorMessage } from '../../lib/salesforce/friendlyError'
+import {
+  DEFAULT_LEAD_COUNTRY_CODE,
+  LEAD_COUNTRY_CODES,
+  countryCodeLabel,
+} from '../../lib/leadCountryCodes'
 import type { Project } from '../../lib/types'
 
 const log = (...args: unknown[]) => {
@@ -58,6 +64,7 @@ const getSchema = (t: (key: string) => string) =>
     profile: z.enum(['Investor', 'Customer', 'Supplier']),
     name: z.string().min(2, t('registerInterest.firstNameRequired')),
     email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
+    countryCode: z.string().min(2),
     phone: z.string().min(9, t('registerInterest.phoneInvalid')),
     region: z.string().optional(),
     city: z.string().optional(),
@@ -70,6 +77,7 @@ function buildEmptyDefaults(projectId?: string): FormData {
     profile: 'Investor',
     name: '',
     email: '',
+    countryCode: DEFAULT_LEAD_COUNTRY_CODE,
     phone: '',
     region: '',
     city: '',
@@ -93,10 +101,12 @@ export default function LeadInterestForm({
   onDialogFlowComplete,
 }: LeadInterestFormProps) {
   const { t, i18n } = useTranslation()
+  const isAr = i18n.language.startsWith('ar')
   const uid = useId()
   const regionLabelId = `${uid}-region`
   const cityLabelId = `${uid}-city`
   const projectLabelId = `${uid}-project`
+  const countryLabelId = `${uid}-country`
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -344,9 +354,13 @@ export default function LeadInterestForm({
           firstName,
           lastName,
           phone: data.phone,
+          countryCode: data.countryCode,
           email: data.email || '',
           message,
+          region: data.region || lockedProject?.provinceRegion || fallbackProvinceRegion || undefined,
+          city: data.city || lockedProject?.city || fallbackCity || undefined,
           interestedProjectName: projectLabel || undefined,
+          interestedProjectId: effectiveProjectId || undefined,
           interestedPhaseId: phaseId,
           interestedUnitId: unitId,
         },
@@ -366,7 +380,7 @@ export default function LeadInterestForm({
           }, 2000)
         }
       } else {
-        setError(response.error || t('contact.errorOccurred'))
+        setError(friendlyLeadErrorMessage(response.error, t('contact.errorOccurred')))
       }
     } catch {
       setError(t('contact.errorOccurred'))
@@ -503,7 +517,30 @@ export default function LeadInterestForm({
             <FormHelperText error={!!supplierPdfError}>{supplierPdfError || t('contact.supplierPdfHint')}</FormHelperText>
           </Grid>
         )}
-        <Grid size={{ xs: 12 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Controller
+            name="countryCode"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth required>
+                <InputLabel id={countryLabelId}>{t('contact.countryCode')}</InputLabel>
+                <Select
+                  labelId={countryLabelId}
+                  label={t('contact.countryCode')}
+                  {...field}
+                  value={field.value || DEFAULT_LEAD_COUNTRY_CODE}
+                >
+                  {LEAD_COUNTRY_CODES.map((code) => (
+                    <MenuItem key={code.value} value={code.value}>
+                      {countryCodeLabel(code, isAr)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             {...register('phone')}
             label={t('contact.phone')}
@@ -512,7 +549,7 @@ export default function LeadInterestForm({
             fullWidth
             required
             error={!!errors.phone}
-            helperText={errors.phone?.message}
+            helperText={errors.phone?.message || t('contact.phoneHint')}
           />
         </Grid>
         <Grid size={{ xs: 12 }}>

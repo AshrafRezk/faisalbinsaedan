@@ -3,8 +3,9 @@
  *
  * POST JSON body:
  * {
- *   firstName, lastName, email?, phone, profile, message?, company?,
- *   interestedProjectName?, interestedPhaseId?, interestedUnitId?,
+ *   firstName, lastName, email?, phone, countryCode?, region?, city?, unitType?,
+ *   profile, message?, company?,
+ *   interestedProjectName?, interestedProjectId?, interestedPhaseId?, interestedUnitId?,
  *   rentalProjectId?, rentalBudget?, numberOfRooms?, rentalStartDate?, rentalEndDate?,
  *   supplierAttachment?: { fileName, contentType, base64 }
  * }
@@ -15,6 +16,57 @@ function json(statusCode, body) {
     statusCode,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  }
+}
+
+/** Build SF Phone digits from local number + country dial code (default 966). */
+function normalizePhone(raw, countryCode) {
+  const ccDigits = String(countryCode || '966').replace(/\D/g, '') || '966'
+  let digits = String(raw || '').replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.startsWith(ccDigits) && digits.length >= ccDigits.length + 8) return digits
+  if (digits.startsWith('0')) digits = digits.slice(1)
+  return `${ccDigits}${digits}`
+}
+
+function humanizeSalesforceMessage(message) {
+  const text = String(message || '').trim()
+  if (!text) return null
+
+  const lower = text.toLowerCase()
+  if (lower.includes('phone') && (lower.includes('saudi') || lower.includes('invalid number'))) {
+    return 'Please enter a valid Saudi mobile number (without country code). Example: 501234567'
+  }
+
+  return text.replace(/^[A-Za-z0-9_]+:\s*/, '') || text
+}
+
+function friendlyLeadError(error) {
+  const raw = error instanceof Error ? error.message : String(error || '')
+  const jsonMatch = raw.match(/(\[[\s\S]*\]|\{[\s\S]*\})\s*$/)
+  const candidate = jsonMatch ? jsonMatch[1] : raw
+
+  try {
+    const parsed = JSON.parse(candidate)
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    const messages = items
+      .map((item) => humanizeSalesforceMessage(item?.message))
+      .filter(Boolean)
+    if (messages.length > 0) return { message: messages.join(' '), statusCode: 400 }
+  } catch {
+    // fall through
+  }
+
+  if (/phone/i.test(raw) && /saudi|invalid/i.test(raw)) {
+    return {
+      message: 'Please enter a valid Saudi mobile number (without country code). Example: 501234567',
+      statusCode: 400,
+    }
+  }
+
+  return {
+    message: 'We could not submit your request. Please check your details and try again.',
+    statusCode: 500,
   }
 }
 
@@ -58,11 +110,12 @@ function buildStandardLeadPayload(body) {
   const profile = String(body.profile || '').trim()
   const message = String(body.message || '').trim()
   const lines = [profile ? `Profile: ${profile}` : null, message || null].filter(Boolean)
+  const countryCode = String(body.countryCode || '+966').trim() || '+966'
 
   const payload = {
     FirstName: String(body.firstName || '').trim() || 'PWA',
     LastName: String(body.lastName || '').trim() || 'Lead',
-    Phone: String(body.phone || '').trim(),
+    Phone: normalizePhone(body.phone, countryCode),
     Company: String(body.company || 'Faisal Bin Saedan PWA').trim(),
     LeadSource: 'PWA',
     Description: lines.join('\n\n'),
@@ -73,6 +126,23 @@ function buildStandardLeadPayload(body) {
 
   const company = String(body.company || '').trim()
   if (company) payload.Company = company
+
+  // Same API names as website bot (salesforce-lead.js)
+  const countryField = process.env.SALESFORCE_LEAD_COUNTRY_FIELD || 'Mobile_Country__c'
+  const regionField = process.env.SALESFORCE_LEAD_REGION_FIELD || 'Region_Province__c'
+  const cityField = process.env.SALESFORCE_LEAD_CITY_FIELD || 'Lead_City__c'
+  const unitTypeField = process.env.SALESFORCE_LEAD_UNIT_TYPE_FIELD || 'Unit_Type__c'
+
+  if (countryCode) payload[countryField] = countryCode
+
+  const region = String(body.region || '').trim()
+  if (region) payload[regionField] = region
+
+  const city = String(body.city || '').trim()
+  if (city) payload[cityField] = city
+
+  const unitType = String(body.unitType || '').trim()
+  if (unitType) payload[unitTypeField] = unitType
 
   return payload
 }
@@ -89,6 +159,15 @@ function buildSalesInterestFields(body) {
   const phaseField = process.env.SALESFORCE_LEAD_PHASE_FIELD || 'Interested_Phase__c'
   if (body.interestedPhaseId && phaseField) fields[phaseField] = body.interestedPhaseId
 
+  return fields
+}
+
+function buildProjectLookupFields(body) {
+  const fields = {}
+  const projectLookupField = process.env.SALESFORCE_LEAD_PROJECT_LOOKUP_FIELD || 'Interested_Project__c'
+  if (body.interestedProjectId && projectLookupField) {
+    fields[projectLookupField] = body.interestedProjectId
+  }
   return fields
 }
 
@@ -111,15 +190,6 @@ function buildRentalLeadFields(body) {
   if (body.rentalEndDate) fields[rentalEndField] = body.rentalEndDate
 
   return fields
-}
-
-/** @deprecated Use buildStandardLeadPayload + patch helpers */
-function buildLeadPayload(body) {
-  return {
-    ...buildStandardLeadPayload(body),
-    ...buildSalesInterestFields(body),
-    ...buildRentalLeadFields(body),
-  }
 }
 
 async function createLeadRecord(instanceUrl, accessToken, payload) {
@@ -225,9 +295,16 @@ export const handler = async (event) => {
       return json(400, { success: false, error: 'Invalid profile type' })
     }
 
-    if (!body.phone || String(body.phone).trim().length < 9) {
-      return json(400, { success: false, error: 'Phone is required' })
+    const countryCode = String(body.countryCode || '+966').trim() || '+966'
+    const phone = normalizePhone(body.phone, countryCode)
+    if (!phone || phone.replace(/\D/g, '').length < 11) {
+      return json(400, {
+        success: false,
+        error: 'Please enter a valid mobile number (without country code). Example: 501234567',
+      })
     }
+    body.phone = phone
+    body.countryCode = countryCode
 
     if (profile === 'Supplier') {
       const attachment = body.supplierAttachment
@@ -243,9 +320,39 @@ export const handler = async (event) => {
     const { accessToken, instanceUrl } = await getSalesforceAccessToken()
     const standardPayload = buildStandardLeadPayload(body)
     const salesFields = buildSalesInterestFields(body)
+    const projectLookupFields = buildProjectLookupFields(body)
     const rentalFields = buildRentalLeadFields(body)
 
-    const leadId = await createLeadRecord(instanceUrl, accessToken, standardPayload)
+    let leadId
+    try {
+      leadId = await createLeadRecord(instanceUrl, accessToken, standardPayload)
+    } catch (createError) {
+      const coreOnly = {
+        FirstName: standardPayload.FirstName,
+        LastName: standardPayload.LastName,
+        Phone: standardPayload.Phone,
+        Company: standardPayload.Company,
+        LeadSource: standardPayload.LeadSource,
+        Description: standardPayload.Description,
+      }
+      if (standardPayload.Email) coreOnly.Email = standardPayload.Email
+      console.warn('[Leads] Create with location fields failed, retrying core fields only:', createError.message)
+      leadId = await createLeadRecord(instanceUrl, accessToken, coreOnly)
+
+      const locationPatch = { ...standardPayload }
+      delete locationPatch.FirstName
+      delete locationPatch.LastName
+      delete locationPatch.Phone
+      delete locationPatch.Company
+      delete locationPatch.LeadSource
+      delete locationPatch.Description
+      delete locationPatch.Email
+      try {
+        await patchLeadFields(instanceUrl, accessToken, leadId, locationPatch, 'location')
+      } catch (patchErr) {
+        console.warn('[Leads] Location patch after core create failed:', patchErr.message)
+      }
+    }
 
     const patchWarnings = []
     try {
@@ -256,6 +363,12 @@ export const handler = async (event) => {
 
     try {
       await patchLeadFields(instanceUrl, accessToken, leadId, salesFields, 'sales interest')
+    } catch (error) {
+      patchWarnings.push(error.message)
+    }
+
+    try {
+      await patchLeadFields(instanceUrl, accessToken, leadId, projectLookupFields, 'project lookup')
     } catch (error) {
       patchWarnings.push(error.message)
     }
@@ -285,9 +398,10 @@ export const handler = async (event) => {
     })
   } catch (error) {
     console.error('[Leads] Error:', error)
-    return json(500, {
+    const { message, statusCode } = friendlyLeadError(error)
+    return json(statusCode, {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create lead',
+      error: message,
     })
   }
 }

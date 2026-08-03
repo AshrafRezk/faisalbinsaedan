@@ -345,7 +345,9 @@
     "firstNamePlaceholder": "أحمد",
     "lastNamePlaceholder": "الراشد",
     "emailPlaceholder": "ahmed@example.com",
-    "phonePlaceholder": "+966 5X XXX XXXX",
+    "phonePlaceholder": "501234567",
+    "phoneHint": "أدخل رقم الجوال بدون رمز الدولة",
+    "countryCode": "رمز الدولة",
     "messagePlaceholder": "كيف يمكننا مساعدتك؟",
     "supplierPdfLabel": "مستند المورد (PDF)",
     "supplierPdfHint": "ارفع ملف الشركة أو السجل التجاري بصيغة PDF (حد أقصى 5 ميجابايت).",
@@ -356,7 +358,8 @@
     "submitting": "جاري الإرسال...",
     "messageSent": "تم إرسال رسالتك!",
     "willContactSoon": "سنتواصل معك قريباً",
-    "errorOccurred": "حدث خطأ. يرجى المحاولة مرة أخرى."
+    "errorOccurred": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "phoneSaudiInvalid": "يرجى إدخال رقم جوال سعودي صحيح (بدون رمز الدولة). مثال: 501234567"
   },
   "registerInterest": {
     "title": "سجل اهتمامك",

@@ -1326,12 +1326,20 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
 }
 
 export async function searchUnits(filters?: UnitFilters) {
-  console.log('[Units] Searching units from Salesforce...')
+  console.log('[Units] Searching units from Salesforce...', filters)
+
+  const wantsSubsidiesOnly = filters?.eligibleForSubsidies === true
 
   const availableOnlyFilters: UnitFilters = {
     ...(filters || {}),
     status: 'Available',
     phaseId: undefined,
+    projectType: undefined,
+  }
+  if (!wantsSubsidiesOnly) {
+    delete availableOnlyFilters.eligibleForSubsidies
+  } else {
+    availableOnlyFilters.eligibleForSubsidies = true
   }
 
   try {
@@ -1339,7 +1347,10 @@ export async function searchUnits(filters?: UnitFilters) {
 
     if (result.success && result.data) {
       const rawUnits = result.data.units || []
-      const mappedUnits = rawUnits.map(mapSalesforceUnit)
+      let mappedUnits = rawUnits.map(mapSalesforceUnit)
+      if (wantsSubsidiesOnly) {
+        mappedUnits = mappedUnits.filter((unit) => unit.eligibleForSubsidies === true)
+      }
       console.log('[Units] ✅ Loaded from Salesforce:', mappedUnits.length)
       return {
         success: true,

@@ -48,36 +48,40 @@ export default function Search() {
     hasPreviousPage: boolean
   } | null>(null)
   const projectTypeFilter = searchParams.get('projectType') || undefined
+  const usageTypeFilter =
+    searchParams.get('usageType') ||
+    searchParams.get('projectType') ||
+    undefined
   const projectsPage = Math.max(1, Number(searchParams.get('page')) || 1)
-  const prevProjectTypeRef = useRef(projectTypeFilter)
+  const prevUsageTypeRef = useRef(usageTypeFilter)
 
   // Set initial filter and view from URL params
   useEffect(() => {
     const projectId = searchParams.get('projectId')
-    const projectType = searchParams.get('projectType')
+    const usageType = searchParams.get('usageType') || searchParams.get('projectType')
     const view = searchParams.get('view')
     if (view === 'projects') {
       setViewMode('projects')
     }
-    if (projectId || projectType) {
-      setFilters({
-        ...filters,
+    if (projectId || usageType) {
+      setFilters((prev) => ({
+        ...prev,
         ...(projectId ? { projectId } : {}),
-        ...(projectType ? { projectType } : {}),
+        ...(usageType ? { usageType, projectType: undefined } : {}),
         page: 1,
-      })
+      }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   useEffect(() => {
-    if (prevProjectTypeRef.current === projectTypeFilter) return
-    prevProjectTypeRef.current = projectTypeFilter
+    if (prevUsageTypeRef.current === usageTypeFilter) return
+    prevUsageTypeRef.current = usageTypeFilter
     if (!searchParams.get('page')) return
     const params = new URLSearchParams(searchParams)
     params.delete('page')
     setSearchParams(params, { replace: true })
-  }, [projectTypeFilter, searchParams, setSearchParams])
+  }, [usageTypeFilter, searchParams, setSearchParams])
 
   // Fetch units when filters change (filtering happens on backend)
   useEffect(() => {

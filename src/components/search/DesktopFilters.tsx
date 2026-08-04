@@ -114,11 +114,12 @@ export default function DesktopFilters() {
           <TextField
             select
             label={t('search.propertyType')}
-            value={filters.projectType || ''}
+            value={filters.usageType || ''}
             onChange={(e) =>
               setFilters({
                 ...filters,
-                projectType: e.target.value || undefined,
+                usageType: e.target.value || undefined,
+                projectType: undefined,
                 page: 1,
               })
             }

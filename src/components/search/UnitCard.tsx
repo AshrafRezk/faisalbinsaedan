@@ -39,7 +39,7 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
     Sold: t('unit.sold'),
   }
 
-  const propertyType = unit.propertyType?.toLowerCase()
+  const propertyType = (unit.usageType || unit.propertyType)?.toLowerCase()
   const isCommercial = propertyType === 'commercial'
   const isResidential = propertyType === 'residential'
 

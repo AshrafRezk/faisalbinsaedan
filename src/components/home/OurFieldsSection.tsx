@@ -14,7 +14,7 @@ const PROPERTY_TYPE_BY_CARD_ID: Record<string, string> = {
 function fieldCardLink(cardId: string, fallbackLink: string): string {
   const propertyType = PROPERTY_TYPE_BY_CARD_ID[cardId]
   if (!propertyType) return fallbackLink
-  return `/search?projectType=${encodeURIComponent(propertyType)}`
+  return `/search?usageType=${encodeURIComponent(propertyType)}`
 }
 
 export default function OurFieldsSection() {

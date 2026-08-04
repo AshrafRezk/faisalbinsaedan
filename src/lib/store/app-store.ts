@@ -13,7 +13,7 @@ interface AppState {
 
   // Search Filters
   filters: UnitFilters;
-  setFilters: (filters: UnitFilters) => void;
+  setFilters: (filters: UnitFilters | ((prev: UnitFilters) => UnitFilters)) => void;
   clearFilters: () => void;
 
   // UI State
@@ -46,7 +46,13 @@ export const useAppStore = create<AppState>()(
 
       // Search Filters
       filters: {},
-      setFilters: (filters) => set({ filters }),
+      setFilters: (filtersOrUpdater) =>
+        set((state) => ({
+          filters:
+            typeof filtersOrUpdater === 'function'
+              ? filtersOrUpdater(state.filters)
+              : filtersOrUpdater,
+        })),
       clearFilters: () => set({ filters: {} }),
 
       // UI State

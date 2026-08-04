@@ -27,7 +27,7 @@ export default function FilterDrawer() {
 
   const [localFilters, setLocalFilters] = useState({
     projectId: filters.projectId || '',
-    projectType: filters.projectType || '',
+    usageType: filters.usageType || '',
     model: filters.model || '',
     bedrooms: filters.bedrooms?.toString() || '',
     priceRange: '',
@@ -47,7 +47,7 @@ export default function FilterDrawer() {
   useEffect(() => {
     setLocalFilters({
       projectId: filters.projectId || '',
-      projectType: filters.projectType || '',
+      usageType: filters.usageType || '',
       model: filters.model || '',
       bedrooms: filters.bedrooms?.toString() || '',
       priceRange: '',
@@ -95,8 +95,10 @@ export default function FilterDrawer() {
       : [undefined, undefined]
 
     setFilters({
+      ...filters,
       projectId: localFilters.projectId || undefined,
-      projectType: localFilters.projectType || undefined,
+      usageType: localFilters.usageType || undefined,
+      projectType: undefined,
       model: localFilters.model || undefined,
       bedrooms: localFilters.bedrooms ? parseInt(localFilters.bedrooms) : undefined,
       minPrice,
@@ -107,10 +109,19 @@ export default function FilterDrawer() {
     setFilterDrawerOpen(false)
   }
 
+  const applySubsidiesFilter = (checked: boolean) => {
+    setLocalFilters((prev) => ({ ...prev, eligibleForSubsidies: checked }))
+    setFilters({
+      ...filters,
+      eligibleForSubsidies: checked ? true : undefined,
+      page: 1,
+    })
+  }
+
   const handleReset = () => {
     setLocalFilters({
       projectId: '',
-      projectType: '',
+      usageType: '',
       model: '',
       bedrooms: '',
       priceRange: '',
@@ -121,7 +132,7 @@ export default function FilterDrawer() {
 
   const hasActiveFilters =
     localFilters.projectId !== '' ||
-    localFilters.projectType !== '' ||
+    localFilters.usageType !== '' ||
     localFilters.model !== '' ||
     localFilters.bedrooms !== '' ||
     localFilters.priceRange !== '' ||
@@ -203,8 +214,8 @@ export default function FilterDrawer() {
           <TextField
             select
             label={t('search.propertyType')}
-            value={localFilters.projectType}
-            onChange={(e) => setLocalFilters({ ...localFilters, projectType: e.target.value })}
+            value={localFilters.usageType}
+            onChange={(e) => setLocalFilters({ ...localFilters, usageType: e.target.value })}
             fullWidth
           >
             {propertyTypeOptions.map((option) => (
@@ -260,9 +271,7 @@ export default function FilterDrawer() {
             control={
               <Checkbox
                 checked={localFilters.eligibleForSubsidies}
-                onChange={(e) =>
-                  setLocalFilters({ ...localFilters, eligibleForSubsidies: e.target.checked })
-                }
+                onChange={(e) => applySubsidiesFilter(e.target.checked)}
               />
             }
             label={t('search.eligibleForSubsidies')}

@@ -246,7 +246,9 @@ export const handler = async (event) => {
         finishing: u.Finishing__c ?? undefined,
         usageType: c.Unit_Usage_Type__c ?? u.Usage_Type__c ?? undefined,
         view: u.View__c ?? undefined,
-        eligibleForSubsidies: !!u.Eligible_for_Subsidies__c,
+        eligibleForSubsidies: ['yes', 'true', 'eligible'].includes(
+          String(u.Eligible_for_Subsidies__c || '').toLowerCase()
+        ),
         subsidies: u.Subsidies__c ?? undefined,
         deliveryDate: undefined,
         images: u.Unit_Image__c ? [u.Unit_Image__c] : [],

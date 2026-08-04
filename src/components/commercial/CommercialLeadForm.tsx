@@ -183,8 +183,18 @@ export default function CommercialLeadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Grid container spacing={2}>
+    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate dir={isAr ? 'rtl' : 'ltr'}>
+      <Grid
+        container
+        spacing={2}
+        sx={{
+          '& > .MuiGrid-root': {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+          },
+        }}
+      >
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             {...register('name')}
@@ -192,7 +202,7 @@ export default function CommercialLeadForm() {
             placeholder={t('contact.namePlaceholder')}
             fullWidth
             error={!!errors.name}
-            helperText={errors.name?.message}
+            helperText={errors.name?.message || ' '}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
@@ -202,10 +212,10 @@ export default function CommercialLeadForm() {
             placeholder={t('contact.notSpecified')}
             fullWidth
             error={!!errors.companyName}
-            helperText={errors.companyName?.message}
+            helperText={errors.companyName?.message || ' '}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             {...register('email')}
             label={t('contact.email')}
@@ -213,7 +223,7 @@ export default function CommercialLeadForm() {
             placeholder={t('contact.emailPlaceholder')}
             fullWidth
             error={!!errors.email}
-            helperText={errors.email?.message}
+            helperText={errors.email?.message || ' '}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
@@ -221,7 +231,7 @@ export default function CommercialLeadForm() {
             name="countryCode"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth required>
+              <FormControl fullWidth required error={!!errors.countryCode}>
                 <InputLabel>{t('contact.countryCode')}</InputLabel>
                 <Select
                   label={t('contact.countryCode')}
@@ -234,6 +244,9 @@ export default function CommercialLeadForm() {
                     </MenuItem>
                   ))}
                 </Select>
+                <FormHelperText sx={{ visibility: 'hidden', m: 0 }} aria-hidden>
+                  .
+                </FormHelperText>
               </FormControl>
             )}
           />
@@ -256,7 +269,7 @@ export default function CommercialLeadForm() {
             name="projectId"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth>
+              <FormControl fullWidth error={!!errors.projectId}>
                 <InputLabel>{t('commercial.project')}</InputLabel>
                 <Select label={t('commercial.project')} {...field} value={field.value || ''}>
                   <MenuItem value="">{t('search.options.allProjects')}</MenuItem>
@@ -266,6 +279,9 @@ export default function CommercialLeadForm() {
                     </MenuItem>
                   ))}
                 </Select>
+                <FormHelperText sx={{ visibility: 'hidden', m: 0 }} aria-hidden>
+                  .
+                </FormHelperText>
               </FormControl>
             )}
           />
@@ -276,7 +292,7 @@ export default function CommercialLeadForm() {
             name="propertyType"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth>
+              <FormControl fullWidth error={!!errors.propertyType}>
                 <InputLabel>{t('commercial.propertyType')}</InputLabel>
                 <Select label={t('commercial.propertyType')} {...field} value={field.value || ''}>
                   <MenuItem value="">{t('search.options.all')}</MenuItem>
@@ -285,6 +301,9 @@ export default function CommercialLeadForm() {
                   <MenuItem value="warehouse">{t('commercial.propertyOptions.warehouse')}</MenuItem>
                   <MenuItem value="other">{t('commercial.propertyOptions.other')}</MenuItem>
                 </Select>
+                <FormHelperText sx={{ visibility: 'hidden', m: 0 }} aria-hidden>
+                  .
+                </FormHelperText>
               </FormControl>
             )}
           />
@@ -299,7 +318,7 @@ export default function CommercialLeadForm() {
             type="number"
             inputProps={{ min: 0, step: 1000 }}
             error={!!errors.rentalBudget}
-            helperText={errors.rentalBudget?.message}
+            helperText={errors.rentalBudget?.message || ' '}
           />
         </Grid>
 
@@ -312,7 +331,7 @@ export default function CommercialLeadForm() {
             type="number"
             inputProps={{ min: 0, step: 1 }}
             error={!!errors.numberOfRooms}
-            helperText={errors.numberOfRooms?.message}
+            helperText={errors.numberOfRooms?.message || ' '}
           />
         </Grid>
 
@@ -324,7 +343,7 @@ export default function CommercialLeadForm() {
             type="date"
             InputLabelProps={{ shrink: true }}
             error={!!errors.rentalStartDate}
-            helperText={errors.rentalStartDate?.message}
+            helperText={errors.rentalStartDate?.message || ' '}
           />
         </Grid>
 
@@ -336,7 +355,7 @@ export default function CommercialLeadForm() {
             type="date"
             InputLabelProps={{ shrink: true }}
             error={!!errors.rentalEndDate}
-            helperText={errors.rentalEndDate?.message}
+            helperText={errors.rentalEndDate?.message || ' '}
           />
         </Grid>
 
@@ -371,6 +390,6 @@ export default function CommercialLeadForm() {
       >
         {isSubmitting ? t('contact.submitting') : t('contact.send')}
       </Button>
-    </form>
+    </Box>
   )
 }

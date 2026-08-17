@@ -5,6 +5,7 @@
  * {
  *   firstName, lastName, email?, phone, countryCode?, region?, city?, unitType?,
  *   profile, message?, company?,
+ *   commercialRegistrationNumber?, taxRegistrationNumber?,
  *   interestedProjectName?, interestedProjectId?, interestedPhaseId?, interestedUnitId?,
  *   rentalProjectId?, rentalBudget?, numberOfRooms?, rentalStartDate?, rentalEndDate?,
  *   supplierAttachment?: { fileName, contentType, base64 }
@@ -126,6 +127,16 @@ function buildStandardLeadPayload(body) {
 
   const company = String(body.company || '').trim()
   if (company) payload.Company = company
+
+  if (['Investor', 'Supplier', 'Individual'].includes(profile)) {
+    payload.Customer_Type__c = profile
+  }
+
+  const cr = String(body.commercialRegistrationNumber || '').trim()
+  if (cr) payload.Commercial_Registration_Number__c = cr.slice(0, 15)
+
+  const tax = String(body.taxRegistrationNumber || '').trim()
+  if (tax) payload.Tax_Registration_Number__c = tax.slice(0, 20)
 
   // Same API names as website bot (salesforce-lead.js)
   const countryField = process.env.SALESFORCE_LEAD_COUNTRY_FIELD || 'Mobile_Country__c'
@@ -291,7 +302,7 @@ export const handler = async (event) => {
     const body = JSON.parse(event.body || '{}')
     const profile = String(body.profile || '').trim()
 
-    if (!['Investor', 'Customer', 'Supplier'].includes(profile)) {
+    if (!['Investor', 'Customer', 'Supplier', 'Individual'].includes(profile)) {
       return json(400, { success: false, error: 'Invalid profile type' })
     }
 
@@ -307,6 +318,14 @@ export const handler = async (event) => {
     body.countryCode = countryCode
 
     if (profile === 'Supplier') {
+      const cr = String(body.commercialRegistrationNumber || '').trim()
+      const tax = String(body.taxRegistrationNumber || '').trim()
+      if (!cr) {
+        return json(400, { success: false, error: 'Commercial Registration Number is required' })
+      }
+      if (!tax) {
+        return json(400, { success: false, error: 'Tax Registration Number is required' })
+      }
       const attachment = body.supplierAttachment
       if (!attachment?.base64) {
         return json(400, { success: false, error: 'Supplier registration requires a PDF attachment' })

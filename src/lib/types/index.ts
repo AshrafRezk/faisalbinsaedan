@@ -180,7 +180,7 @@ export interface Lead {
   city?: string;
   /** Unit_Type__c — e.g. "Rental" for commercial leads */
   unitType?: string;
-  profile?: "Investor" | "Customer" | "Supplier";
+  profile?: "Investor" | "Customer" | "Supplier" | "Individual";
   source: "PWA";
   interestedProjectId?: string;
   /** Lead.Interested_Projects__c — project display name (picklist value) */
@@ -199,6 +199,8 @@ export interface Lead {
   /** Lead.Rental_End_Date__c (YYYY-MM-DD) */
   rentalEndDate?: string;
   message?: string;
+  commercialRegistrationNumber?: string;
+  taxRegistrationNumber?: string;
   createdAt?: string;
 }
 

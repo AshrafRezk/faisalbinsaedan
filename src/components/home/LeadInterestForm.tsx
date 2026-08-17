@@ -13,9 +13,10 @@ import {
   Select,
   MenuItem,
   FormHelperText,
+  Link,
 } from '@mui/material'
 import { CheckCircle, UploadFile } from '@mui/icons-material'
-import { Send } from 'lucide-react'
+import { Send, FileDown } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,6 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { createLead, getProjects } from '../../lib/api-client'
 import { salesforceIdsEqual } from '../../lib/salesforceIds'
 import { friendlyLeadErrorMessage } from '../../lib/salesforce/friendlyError'
+import { SUPPLIER_GUIDE_PDF_URL } from '../../lib/contact'
 import {
   DEFAULT_LEAD_COUNTRY_CODE,
   LEAD_COUNTRY_CODES,
@@ -60,17 +62,51 @@ type FormData = z.infer<ReturnType<typeof getSchema>>
 const MAX_SUPPLIER_PDF_BYTES = 5 * 1024 * 1024
 
 const getSchema = (t: (key: string) => string) =>
-  z.object({
-    profile: z.enum(['Investor', 'Customer', 'Supplier']),
-    name: z.string().min(2, t('registerInterest.firstNameRequired')),
-    email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
-    countryCode: z.string().min(2),
-    phone: z.string().min(9, t('registerInterest.phoneInvalid')),
-    region: z.string().optional(),
-    city: z.string().optional(),
-    project: z.string().optional(),
-    message: z.string().trim().min(3, t('contact.messageTooShort')),
-  })
+  z
+    .object({
+      profile: z.enum(['Investor', 'Individual', 'Supplier']),
+      name: z.string().min(2, t('registerInterest.firstNameRequired')),
+      email: z.union([z.string().email(t('registerInterest.emailInvalid')), z.literal('')]).optional(),
+      countryCode: z.string().min(2),
+      phone: z.string().min(9, t('registerInterest.phoneInvalid')),
+      region: z.string().optional(),
+      city: z.string().optional(),
+      project: z.string().optional(),
+      message: z.string().trim().min(3, t('contact.messageTooShort')),
+      commercialRegistrationNumber: z.string().optional(),
+      taxRegistrationNumber: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.profile !== 'Supplier') return
+      const cr = (data.commercialRegistrationNumber || '').trim()
+      const tax = (data.taxRegistrationNumber || '').trim()
+      if (!cr) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['commercialRegistrationNumber'],
+          message: t('contact.commercialRegistrationRequired'),
+        })
+      } else if (cr.length > 15) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['commercialRegistrationNumber'],
+          message: t('contact.commercialRegistrationTooLong'),
+        })
+      }
+      if (!tax) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['taxRegistrationNumber'],
+          message: t('contact.taxRegistrationRequired'),
+        })
+      } else if (tax.length > 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['taxRegistrationNumber'],
+          message: t('contact.taxRegistrationTooLong'),
+        })
+      }
+    })
 
 function buildEmptyDefaults(projectId?: string): FormData {
   return {
@@ -83,6 +119,8 @@ function buildEmptyDefaults(projectId?: string): FormData {
     city: '',
     project: projectId ?? '',
     message: '',
+    commercialRegistrationNumber: '',
+    taxRegistrationNumber: '',
   }
 }
 
@@ -363,6 +401,9 @@ export default function LeadInterestForm({
           interestedProjectId: effectiveProjectId || undefined,
           interestedPhaseId: phaseId,
           interestedUnitId: unitId,
+          commercialRegistrationNumber:
+            data.profile === 'Supplier' ? data.commercialRegistrationNumber?.trim() : undefined,
+          taxRegistrationNumber: data.profile === 'Supplier' ? data.taxRegistrationNumber?.trim() : undefined,
         },
         data.profile === 'Supplier' && supplierPdf ? { supplierPdf } : undefined
       )
@@ -423,6 +464,8 @@ export default function LeadInterestForm({
                   if (next !== 'Supplier') {
                     setSupplierPdf(null)
                     setSupplierPdfError(null)
+                    setValue('commercialRegistrationNumber', '')
+                    setValue('taxRegistrationNumber', '')
                   }
                 }}
                 fullWidth
@@ -455,7 +498,7 @@ export default function LeadInterestForm({
                 aria-label={t('contact.profileQuestion')}
               >
                 <ToggleButton value="Investor">{t('contact.profileOptions.investor')}</ToggleButton>
-                <ToggleButton value="Customer">{t('contact.profileOptions.customer')}</ToggleButton>
+                <ToggleButton value="Individual">{t('contact.profileOptions.individual')}</ToggleButton>
                 <ToggleButton value="Supplier">{t('contact.profileOptions.supplier')}</ToggleButton>
               </ToggleButtonGroup>
             )}
@@ -488,34 +531,72 @@ export default function LeadInterestForm({
           />
         </Grid>
         {isSupplier && (
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-              {t('contact.supplierPdfLabel')}
-            </Typography>
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<UploadFile />}
-              fullWidth
-              sx={{ py: 1.5, justifyContent: 'flex-start', textTransform: 'none' }}
-            >
-              {supplierPdf
-                ? t('contact.supplierPdfSelected', { name: supplierPdf.name })
-                : t('contact.supplierPdfLabel')}
-              <input
-                type="file"
-                hidden
-                accept="application/pdf,.pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null
-                  setSupplierPdf(file)
-                  setSupplierPdfError(file ? validateSupplierPdf(file) : t('contact.supplierPdfRequired'))
-                  e.target.value = ''
-                }}
+          <>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                {...register('commercialRegistrationNumber')}
+                label={t('contact.commercialRegistrationNumber')}
+                fullWidth
+                required
+                inputProps={{ maxLength: 15 }}
+                error={!!errors.commercialRegistrationNumber}
+                helperText={errors.commercialRegistrationNumber?.message}
               />
-            </Button>
-            <FormHelperText error={!!supplierPdfError}>{supplierPdfError || t('contact.supplierPdfHint')}</FormHelperText>
-          </Grid>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                {...register('taxRegistrationNumber')}
+                label={t('contact.taxRegistrationNumber')}
+                fullWidth
+                required
+                inputProps={{ maxLength: 20 }}
+                error={!!errors.taxRegistrationNumber}
+                helperText={errors.taxRegistrationNumber?.message}
+              />
+            </Grid>
+            {SUPPLIER_GUIDE_PDF_URL ? (
+              <Grid size={{ xs: 12 }}>
+                <Link
+                  href={SUPPLIER_GUIDE_PDF_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  underline="hover"
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600 }}
+                >
+                  <FileDown size={18} />
+                  {t('contact.supplierGuidePdf')}
+                </Link>
+              </Grid>
+            ) : null}
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+                {t('contact.supplierPdfLabel')}
+              </Typography>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<UploadFile />}
+                fullWidth
+                sx={{ py: 1.5, justifyContent: 'flex-start', textTransform: 'none' }}
+              >
+                {supplierPdf
+                  ? t('contact.supplierPdfSelected', { name: supplierPdf.name })
+                  : t('contact.supplierPdfLabel')}
+                <input
+                  type="file"
+                  hidden
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    setSupplierPdf(file)
+                    setSupplierPdfError(file ? validateSupplierPdf(file) : t('contact.supplierPdfRequired'))
+                    e.target.value = ''
+                  }}
+                />
+              </Button>
+              <FormHelperText error={!!supplierPdfError}>{supplierPdfError || t('contact.supplierPdfHint')}</FormHelperText>
+            </Grid>
+          </>
         )}
         <Grid size={{ xs: 12, sm: 4 }}>
           <Controller

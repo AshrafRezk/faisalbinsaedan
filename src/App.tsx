@@ -20,6 +20,7 @@ const ComingSoon = lazy(() => import('./pages/ComingSoon'))
 const AboutUs = lazy(() => import('./pages/AboutUs'))
 const Achievements = lazy(() => import('./pages/Achievements'))
 const LatestReleases = lazy(() => import('./pages/LatestReleases'))
+const ResidentialProjects = lazy(() => import('./pages/ResidentialProjects'))
 const News = lazy(() => import('./pages/News'))
 const NewsArticle = lazy(() => import('./pages/NewsArticle'))
 const CollaborationComingSoon = lazy(() => import('./pages/CollaborationComingSoon'))
@@ -135,6 +136,7 @@ function App() {
               <Route path="unit/:id" element={<UnitDetails />} />
               {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
               <Route path="commercial-rental" element={<CommercialRental />} />
+              <Route path="residential-projects" element={<ResidentialProjects />} />
               {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
               {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}
               {getFeature('Show_Latest_Releases_Page__c', true) && <Route path="latest-releases" element={<LatestReleases />} />}

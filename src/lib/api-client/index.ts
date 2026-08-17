@@ -199,6 +199,10 @@ interface SalesforceProjectRecord {
   Project_Location__c?: string
   Project_Summary_English__c?: string
   Project_Summary_Arabic__c?: string
+  Total_Area__c?: number
+  Leasable_Area__c?: number
+  Completion_Year__c?: number
+  Project_Value__c?: number
 }
 
 interface SalesforceNearbyLocationRecord {
@@ -215,6 +219,15 @@ const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
 
 function isValidSalesforceId(id: string): boolean {
   return SALESFORCE_ID_PATTERN.test(id)
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return undefined
 }
 
 function mapProjectSummaries(p: SalesforceProjectRecord) {
@@ -955,18 +968,34 @@ export async function getProject(id: string) {
   console.log('[Project] Fetching project from Salesforce:', id)
 
   try {
-    const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
+    const baseFields = `Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
                           Map_Show_On_Map__c,
                           Project_Summary_English__c, Project_Summary_Arabic__c,
-                          Project_Location__c, Office_Location__c
+                          Project_Location__c, Office_Location__c`
+    const extraFieldSets = [
+      ', Total_Area__c, Leasable_Area__c, Completion_Year__c, Project_Value__c',
+      ', Total_Area__c',
+      '',
+    ]
+
+    let p: SalesforceProjectRecord | undefined
+    for (const extra of extraFieldSets) {
+      const projectQuery = `SELECT ${baseFields}${extra}
                           FROM Project__c 
                           WHERE Id = '${id}'
                           LIMIT 1`
-
-    const projectResult = await salesforceQuery<SalesforceProjectRecord>(projectQuery)
-    const p = projectResult.records?.[0]
+      try {
+        const projectResult = await salesforceQuery<SalesforceProjectRecord>(projectQuery)
+        p = projectResult.records?.[0]
+        break
+      } catch (error) {
+        const lastAttempt = extra === extraFieldSets[extraFieldSets.length - 1]
+        console.warn('[Project] SOQL failed, retrying without extra fields:', extra || '(base)', error)
+        if (lastAttempt) throw error
+      }
+    }
     if (!p) {
       return { success: false, error: 'Project not found in Salesforce' }
     }
@@ -1024,6 +1053,10 @@ export async function getProject(id: string) {
         nearbyLocations,
         notes,
         attachments,
+        landArea: toFiniteNumber(p.Total_Area__c),
+        leasableArea: toFiniteNumber(p.Leasable_Area__c),
+        completionYear: toFiniteNumber(p.Completion_Year__c),
+        projectValue: toFiniteNumber(p.Project_Value__c),
         phases: [],
         hasAvailability: availableUnitsCount > 0,
         availablePhasesCount: availableUnitsCount,
@@ -1310,6 +1343,7 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
     floor: sfUnit.floor,
     finishing: sfUnit.finishing,
     usageType: sfUnit.usageType,
+    unitType: sfUnit.unitType,
     view: sfUnit.view,
     hasGarden: sfUnit.hasGarden,
     hasLand: sfUnit.hasLand,
@@ -1335,7 +1369,7 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
 export async function searchUnits(filters?: UnitFilters) {
   console.log('[Units] Searching units from Salesforce...', filters)
 
-  const wantsSubsidiesOnly = filters?.eligibleForSubsidies === true
+  const subsidiesFilter = filters?.eligibleForSubsidies
 
   const availableOnlyFilters: UnitFilters = {
     ...(filters || {}),
@@ -1343,10 +1377,12 @@ export async function searchUnits(filters?: UnitFilters) {
     phaseId: undefined,
     projectType: undefined,
   }
-  if (!wantsSubsidiesOnly) {
-    delete availableOnlyFilters.eligibleForSubsidies
-  } else {
+  if (subsidiesFilter === true) {
     availableOnlyFilters.eligibleForSubsidies = true
+  } else if (subsidiesFilter === false) {
+    availableOnlyFilters.eligibleForSubsidies = false
+  } else {
+    delete availableOnlyFilters.eligibleForSubsidies
   }
 
   try {
@@ -1355,8 +1391,10 @@ export async function searchUnits(filters?: UnitFilters) {
     if (result.success && result.data) {
       const rawUnits = result.data.units || []
       let mappedUnits = rawUnits.map(mapSalesforceUnit)
-      if (wantsSubsidiesOnly) {
+      if (subsidiesFilter === true) {
         mappedUnits = mappedUnits.filter((unit) => unit.eligibleForSubsidies === true)
+      } else if (subsidiesFilter === false) {
+        mappedUnits = mappedUnits.filter((unit) => unit.eligibleForSubsidies !== true)
       }
       console.log('[Units] ✅ Loaded from Salesforce:', mappedUnits.length)
       return {

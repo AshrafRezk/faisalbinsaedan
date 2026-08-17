@@ -13,6 +13,7 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },
   commercial: { en: 'Commercial & Rental', ar: 'التجاري والتأجير' },
+  residentialProjects: { en: 'Residential Projects', ar: 'المشاريع السكنية' },
   residentialUnits: { en: 'Residential Units', ar: 'الوحدات السكنية' },
 }
 
@@ -37,6 +38,13 @@ export const SITE_CONTENT_FALLBACKS: SiteContent = {
     subtitle: {
       en: 'Premium Commercial & Rental Spaces',
       ar: 'مساحات تجارية وعقارات تأجير متميزة',
+    },
+  },
+  residentialProjects: {
+    title: { en: 'Residential Projects', ar: 'المشاريع السكنية' },
+    subtitle: {
+      en: 'Explore our residential communities across Saudi Arabia.',
+      ar: 'استكشف مجتمعاتنا السكنية في مختلف مناطق المملكة.',
     },
   },
   navigation: NAV_FALLBACKS,

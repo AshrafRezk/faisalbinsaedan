@@ -169,13 +169,14 @@ export default function Search() {
     setSearchParams(params)
   }
 
-  const activeFiltersCount = Object.entries(filters).filter(
-    ([key, value]) =>
-      value !== undefined &&
-      value !== false &&
-      key !== 'page' &&
-      key !== 'pageSize'
-  ).length
+  const activeFiltersCount = Object.entries({
+    projectId: filters.projectId,
+    city: filters.city,
+    unitType: filters.unitType,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    eligibleForSubsidies: filters.eligibleForSubsidies,
+  }).filter(([, value]) => value !== undefined && value !== '').length
 
   const handleProjectClick = (projectId: string) => {
     if (filters.projectId === projectId) {

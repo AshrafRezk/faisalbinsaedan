@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Container, Grid, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
@@ -8,19 +8,13 @@ import { getProjects } from '../lib/api-client'
 import { useSiteContent } from '../contexts/SiteContentContext'
 import ProjectListingCard, {
   ProjectListingCardSkeleton,
-  getAvailableCount,
   type ProjectWithAvailability,
 } from '../components/project/ProjectListingCard'
 
-function projectHasAvailability(project: ProjectWithAvailability): boolean {
-  if (project.hasAvailability) return true
-  return getAvailableCount(project) > 0
-}
-
-export default function LatestReleases() {
+export default function ResidentialProjects() {
   const { t, i18n } = useTranslation()
   const { pageCopy, navLabel } = useSiteContent()
-  const latestReleasesHero = pageCopy('latestReleases')
+  const hero = pageCopy('residentialProjects')
   const isRtl = i18n.language === 'ar'
   const [projects, setProjects] = useState<ProjectWithAvailability[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -29,12 +23,12 @@ export default function LatestReleases() {
     let cancelled = false
     async function loadProjects() {
       try {
-        const res = await getProjects()
+        const res = await getProjects({ projectType: 'Residential' })
         if (!cancelled && res.success && res.data) {
           setProjects(res.data)
         }
       } catch (err) {
-        console.error('Failed to load projects', err)
+        console.error('Failed to load residential projects', err)
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -45,12 +39,7 @@ export default function LatestReleases() {
     }
   }, [])
 
-  const filteredProjects = useMemo(
-    () => projects.filter(projectHasAvailability),
-    [projects]
-  )
-
-  const countLabel = t('latestReleasesPage.count', { count: filteredProjects.length })
+  const countLabel = t('residentialProjectsPage.count', { count: projects.length })
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: { xs: 6, md: 10 } }}>
@@ -77,11 +66,11 @@ export default function LatestReleases() {
             >
               <Building2 size={22} />
               <Typography variant="overline" sx={{ letterSpacing: '0.2em', fontWeight: 600 }}>
-                {navLabel('latestReleases', t('common.latestReleases'))}
+                {navLabel('residentialProjects', t('common.residentialProjects'))}
               </Typography>
             </Box>
             <Typography variant="h3" fontWeight={700} gutterBottom>
-              {latestReleasesHero.title}
+              {hero.title}
             </Typography>
             <Typography
               variant="h6"
@@ -94,7 +83,7 @@ export default function LatestReleases() {
                 lineHeight: 1.6,
               }}
             >
-              {latestReleasesHero.subtitle}
+              {hero.subtitle}
             </Typography>
           </motion.div>
         </Container>
@@ -117,7 +106,7 @@ export default function LatestReleases() {
               <ProjectListingCardSkeleton key={i} />
             ))}
           </Grid>
-        ) : filteredProjects.length === 0 ? (
+        ) : projects.length === 0 ? (
           <Box
             sx={(theme) => ({
               textAlign: 'center',
@@ -130,15 +119,15 @@ export default function LatestReleases() {
           >
             <Building2 size={48} style={{ opacity: 0.35, marginBottom: 16 }} />
             <Typography variant="h6" color="primary.main" gutterBottom>
-              {t('latestReleasesPage.empty.title')}
+              {t('residentialProjectsPage.empty.title')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 360, mx: 'auto' }}>
-              {t('latestReleasesPage.empty.description')}
+              {t('residentialProjectsPage.empty.description')}
             </Typography>
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {filteredProjects.map((project, index) => (
+            {projects.map((project, index) => (
               <ProjectListingCard key={project.id} project={project} index={index} />
             ))}
           </Grid>

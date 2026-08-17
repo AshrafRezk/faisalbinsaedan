@@ -25,6 +25,7 @@
     "more": "المزيد",
     "call": "اتصال",
     "commercial": "التجاري والتأجير",
+    "residentialProjects": "المشاريع السكنية",
     "residentialUnits": "الوحدات السكنية"
   },
   "footer": {
@@ -217,10 +218,17 @@
     "filterResults": "تصفية النتائج",
     "reset": "إعادة تعيين",
     "project": "المشروع",
+    "projectName": "اسم المشروع",
+    "city": "المدينة",
     "propertyType": "نوع العقار",
     "model": "الموديل",
     "bedrooms": "عدد الغرف",
     "priceRange": "نطاق السعر",
+    "minPrice": "السعر الأدنى",
+    "maxPrice": "السعر الأعلى",
+    "currency": "ريال",
+    "priceStartingFrom": "تبدأ من {{price}} ريال",
+    "supportAvailable": "الدعم متاح",
     "eligibleForSubsidies": "مؤهل للدعم (سكني / وزارة الدفاع)",
     "applyFilters": "تطبيق الفلاتر",
     "previous": "السابق",
@@ -240,6 +248,12 @@
     "options": {
       "all": "الكل",
       "allProjects": "جميع المشاريع",
+      "allCities": "جميع المدن",
+      "standaloneVilla": "فيلا مستقلة",
+      "townhouse": "تاون هاوس",
+      "apartment": "شقة",
+      "yes": "نعم",
+      "no": "لا",
       "oneRoom": "1 غرفة",
       "twoRooms": "2 غرف",
       "threeRooms": "3 غرف",
@@ -554,6 +568,20 @@
     "viewProject": "عرض المشروع",
     "noImage": "لا توجد صورة"
   },
+  "residentialProjectsPage": {
+    "title": "المشاريع السكنية",
+    "subtitle": "استكشف مجتمعاتنا السكنية في مختلف مناطق المملكة.",
+    "count_zero": "لا توجد مشاريع",
+    "count_one": "{{count}} مشروع",
+    "count_two": "{{count}} مشروعان",
+    "count_few": "{{count}} مشاريع",
+    "count_many": "{{count}} مشروعاً",
+    "count_other": "{{count}} مشاريع",
+    "empty": {
+      "title": "لا توجد مشاريع سكنية",
+      "description": "عد لاحقاً لمتابعة المجتمعات السكنية الجديدة."
+    }
+  },
   "project": {
     "notFound": "المشروع غير موجود",
     "notes": "الملاحظات والمستندات",
@@ -566,7 +594,14 @@
     "models": "موديلات الوحدات",
     "modelLabel": "الموديل {{number}}",
     "openModelFile": "فتح الملف",
-    "clickToEnlarge": "اضغط للتكبير"
+    "clickToEnlarge": "اضغط للتكبير",
+    "facts": "بيانات المشروع",
+    "landArea": "مساحة الأرض",
+    "leasableArea": "المساحة القابلة للتأجير",
+    "completionYear": "سنة الإنجاز",
+    "projectType": "نوع المشروع",
+    "projectValue": "قيمة المشروع",
+    "areaUnit": "م²"
   },
   "news": {
     "title": "أحدث البيانات الصحفية والأخبار العقارية",

@@ -39,7 +39,7 @@ export default function Header() {
     { path: '/', label: navLabel('home', t('common.home')) },
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
-    { path: '/search?usageType=Residential', label: navLabel('residentialUnits', t('common.residentialUnits', 'Residential Units')) },
+    { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
     { path: '/commercial-rental', label: navLabel('commercial', t('common.commercial')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]

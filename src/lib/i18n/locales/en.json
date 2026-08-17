@@ -25,6 +25,7 @@
     "more": "More",
     "call": "Call",
     "commercial": "Commercial & Rental",
+    "residentialProjects": "Residential Projects",
     "residentialUnits": "Residential Units"
   },
   "footer": {
@@ -217,10 +218,17 @@
     "filterResults": "Filter Results",
     "reset": "Reset",
     "project": "Project",
+    "projectName": "Project Name",
+    "city": "City",
     "propertyType": "Property Type",
     "model": "Model",
     "bedrooms": "Number of Rooms",
     "priceRange": "Price Range",
+    "minPrice": "Minimum Price",
+    "maxPrice": "Maximum Price",
+    "currency": "SAR",
+    "priceStartingFrom": "Starting from SAR {{price}}",
+    "supportAvailable": "Support Available",
     "eligibleForSubsidies": "Eligible for subsidies (Sakani / Ministry of Defense)",
     "applyFilters": "Apply Filters",
     "previous": "Previous",
@@ -240,6 +248,12 @@
     "options": {
       "all": "All",
       "allProjects": "All Projects",
+      "allCities": "All Cities",
+      "standaloneVilla": "Standalone Villa",
+      "townhouse": "Townhouse",
+      "apartment": "Apartment",
+      "yes": "Yes",
+      "no": "No",
       "oneRoom": "1 Room",
       "twoRooms": "2 Rooms",
       "threeRooms": "3 Rooms",
@@ -550,6 +564,16 @@
     "viewProject": "View project",
     "noImage": "No image available"
   },
+  "residentialProjectsPage": {
+    "title": "Residential Projects",
+    "subtitle": "Explore our residential communities across Saudi Arabia.",
+    "count_one": "{{count}} project",
+    "count_other": "{{count}} projects",
+    "empty": {
+      "title": "No residential projects found",
+      "description": "Check back soon for new residential communities."
+    }
+  },
   "project": {
     "notFound": "Project not found",
     "notes": "Notes",
@@ -562,7 +586,14 @@
     "models": "Unit Models",
     "modelLabel": "Model {{number}}",
     "openModelFile": "Open file",
-    "clickToEnlarge": "Click to enlarge"
+    "clickToEnlarge": "Click to enlarge",
+    "facts": "Project facts",
+    "landArea": "Land Area",
+    "leasableArea": "Leasable Area",
+    "completionYear": "Completion Year",
+    "projectType": "Project Type",
+    "projectValue": "Project Value",
+    "areaUnit": "m²"
   },
   "news": {
     "title": "Latest Press Releases and Real Estate News",

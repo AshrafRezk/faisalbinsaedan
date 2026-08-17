@@ -13,6 +13,7 @@ export const SITE_PWA_LOCATIONS = {
   LATEST_RELEASES: 'Site Latest Releases',
   CONTACT: 'Site Contact',
   COMMERCIAL: 'Site Commercial Rental',
+  RESIDENTIAL_PROJECTS: 'Site Residential Projects',
   NAVIGATION: 'Site Navigation',
 } as const
 
@@ -56,6 +57,10 @@ export function buildSiteContent(records: PWAContentRecord[]): SiteContent {
     commercial: mergePageCopy(
       getRecord(map, SITE_PWA_LOCATIONS.COMMERCIAL, 'section'),
       fallbacks.commercial
+    ),
+    residentialProjects: mergePageCopy(
+      getRecord(map, SITE_PWA_LOCATIONS.RESIDENTIAL_PROJECTS, 'section'),
+      fallbacks.residentialProjects
     ),
     navigation,
   }

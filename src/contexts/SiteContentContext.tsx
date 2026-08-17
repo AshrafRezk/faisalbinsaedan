@@ -21,7 +21,7 @@ interface SiteContentContextValue {
   isLoading: boolean
   text: (value: { en: string; ar: string }) => string
   navLabel: (key: NavLabelKey, fallback?: string) => string
-  pageCopy: (section: 'latestReleases' | 'contact' | 'commercial') => {
+  pageCopy: (section: 'latestReleases' | 'contact' | 'commercial' | 'residentialProjects') => {
     title: string
     subtitle: string
   }
@@ -73,7 +73,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   )
 
   const pageCopy = useCallback(
-    (section: 'latestReleases' | 'contact' | 'commercial') => ({
+    (section: 'latestReleases' | 'contact' | 'commercial' | 'residentialProjects') => ({
       title: text(content[section].title),
       subtitle: text(content[section].subtitle),
     }),

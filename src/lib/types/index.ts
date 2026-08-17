@@ -36,6 +36,14 @@ export interface Project {
   modelFiles?: ProjectModelFile[];
   /** Curated nearby places from Salesforce Nearby_Location__c */
   nearbyLocations?: ProjectNearbyLocation[];
+  /** Salesforce Total_Area__c — land area in SQM */
+  landArea?: number;
+  /** Salesforce Leasable_Area__c — SQM */
+  leasableArea?: number;
+  /** Salesforce Completion_Year__c */
+  completionYear?: number;
+  /** Salesforce Project_Value__c */
+  projectValue?: number;
   phases: Phase[];
 }
 
@@ -130,6 +138,8 @@ export interface Unit {
   floor?: number;
   finishing?: string;
   usageType?: string;
+  /** Salesforce Unit_Type__c — Villa | Townhouse | Apartment */
+  unitType?: string;
   view?: string;
   hasGarden?: boolean;
   hasLand?: boolean;
@@ -244,6 +254,8 @@ export interface UnitFilters {
   projectName?: string;
   /** Salesforce Model__c */
   model?: string;
+  /** Salesforce Unit_Type__c — Villa | Townhouse | Apartment */
+  unitType?: string;
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;

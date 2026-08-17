@@ -41,7 +41,7 @@ export default function BottomNav() {
   ]
 
   const moreItems = [
-    { path: '/search?usageType=Residential', label: navLabel('residentialUnits', t('common.residentialUnits', 'Residential Units')), icon: Home },
+    { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')), icon: Building2 },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')), icon: Newspaper },
     { path: '/community', label: navLabel('community', t('common.community')), icon: Building2 },
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')), icon: Users },

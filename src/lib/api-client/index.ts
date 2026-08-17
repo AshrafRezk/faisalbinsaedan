@@ -55,6 +55,13 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     }
 
     const data = await response.json()
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data?.error || 'Request failed',
+        status: response.status,
+      }
+    }
     return data
   } catch (error) {
     console.error(`Error fetching ${endpoint}:`, error)
@@ -1643,7 +1650,8 @@ export async function getUnit(id: string) {
 }
 
 export type CreateLeadOptions = {
-  supplierPdf?: File
+  commercialRegistrationPdf?: File
+  vatCertificatePdf?: File
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -1663,6 +1671,14 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
+async function toPdfAttachment(file: File, fallbackName: string) {
+  return {
+    fileName: file.name || fallbackName,
+    contentType: file.type || 'application/pdf',
+    base64: await fileToBase64(file),
+  }
+}
+
 // Leads (Salesforce via Netlify Function)
 export async function createLead(
   data: Omit<Lead, 'id' | 'createdAt' | 'source'>,
@@ -1671,11 +1687,18 @@ export async function createLead(
   try {
     const payload: Record<string, unknown> = { ...data, source: 'PWA' }
 
-    if (data.profile === 'Supplier' && options?.supplierPdf) {
-      payload.supplierAttachment = {
-        fileName: options.supplierPdf.name,
-        contentType: options.supplierPdf.type || 'application/pdf',
-        base64: await fileToBase64(options.supplierPdf),
+    if (data.profile === 'Supplier') {
+      if (options?.commercialRegistrationPdf) {
+        payload.commercialRegistrationAttachment = await toPdfAttachment(
+          options.commercialRegistrationPdf,
+          'commercial-registration.pdf'
+        )
+      }
+      if (options?.vatCertificatePdf) {
+        payload.vatCertificateAttachment = await toPdfAttachment(
+          options.vatCertificatePdf,
+          'vat-certificate.pdf'
+        )
       }
     }
 

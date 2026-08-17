@@ -31,6 +31,7 @@ import {
   countryCodeLabel,
 } from '../../lib/leadCountryCodes'
 import type { Project } from '../../lib/types'
+import SupplierPdfPreview from './SupplierPdfPreview'
 
 const log = (...args: unknown[]) => {
   if (import.meta.env.DEV) console.log('[LeadInterestForm]', ...args)
@@ -75,11 +76,56 @@ const getSchema = (t: (key: string) => string) =>
       message: z.string().trim().min(3, t('contact.messageTooShort')),
       commercialRegistrationNumber: z.string().optional(),
       taxRegistrationNumber: z.string().optional(),
+      nationalAddress: z.string().optional(),
+      companyName: z.string().optional(),
+      companyNumber: z.string().optional(),
+      companyType: z.enum(['Company', 'Establishment', '']).optional(),
+      employeePosition: z.string().optional(),
+      investmentType: z.string().optional(),
     })
     .superRefine((data, ctx) => {
       if (data.profile !== 'Supplier') return
       const cr = (data.commercialRegistrationNumber || '').trim()
       const tax = (data.taxRegistrationNumber || '').trim()
+      const nationalAddress = (data.nationalAddress || '').trim()
+      const companyName = (data.companyName || '').trim()
+      const companyNumber = (data.companyNumber || '').trim()
+      const companyType = (data.companyType || '').trim()
+      const employeePosition = (data.employeePosition || '').trim()
+      if (!companyName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['companyName'],
+          message: t('contact.companyNameRequired'),
+        })
+      }
+      if (!companyNumber) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['companyNumber'],
+          message: t('contact.companyNumberRequired'),
+        })
+      } else if (companyNumber.length > 20) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['companyNumber'],
+          message: t('contact.companyNumberTooLong'),
+        })
+      }
+      if (companyType !== 'Company' && companyType !== 'Establishment') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['companyType'],
+          message: t('contact.companyTypeRequired'),
+        })
+      }
+      if (!employeePosition) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['employeePosition'],
+          message: t('contact.employeePositionRequired'),
+        })
+      }
       if (!cr) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -106,6 +152,13 @@ const getSchema = (t: (key: string) => string) =>
           message: t('contact.taxRegistrationTooLong'),
         })
       }
+      if (!nationalAddress) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nationalAddress'],
+          message: t('contact.nationalAddressRequired'),
+        })
+      }
     })
 
 function buildEmptyDefaults(projectId?: string): FormData {
@@ -121,6 +174,12 @@ function buildEmptyDefaults(projectId?: string): FormData {
     message: '',
     commercialRegistrationNumber: '',
     taxRegistrationNumber: '',
+    nationalAddress: '',
+    companyName: '',
+    companyNumber: '',
+    companyType: '',
+    employeePosition: '',
+    investmentType: '',
   }
 }
 
@@ -145,12 +204,15 @@ export default function LeadInterestForm({
   const cityLabelId = `${uid}-city`
   const projectLabelId = `${uid}-project`
   const countryLabelId = `${uid}-country`
+  const companyTypeLabelId = `${uid}-company-type`
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [supplierPdf, setSupplierPdf] = useState<File | null>(null)
-  const [supplierPdfError, setSupplierPdfError] = useState<string | null>(null)
+  const [commercialRegistrationPdf, setCommercialRegistrationPdf] = useState<File | null>(null)
+  const [vatCertificatePdf, setVatCertificatePdf] = useState<File | null>(null)
+  const [commercialRegistrationPdfError, setCommercialRegistrationPdfError] = useState<string | null>(null)
+  const [vatCertificatePdfError, setVatCertificatePdfError] = useState<string | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(false)
 
@@ -174,6 +236,7 @@ export default function LeadInterestForm({
   const cityWatch = watch('city')
   const profileWatch = watch('profile')
   const isSupplier = profileWatch === 'Supplier'
+  const isInvestor = profileWatch === 'Investor'
 
   const regions = useMemo(() => {
     const set = new Set<string>()
@@ -276,8 +339,10 @@ export default function LeadInterestForm({
     reset(buildEmptyDefaults(projectId))
     setError(null)
     setIsSuccess(false)
-    setSupplierPdf(null)
-    setSupplierPdfError(null)
+    setCommercialRegistrationPdf(null)
+    setVatCertificatePdf(null)
+    setCommercialRegistrationPdfError(null)
+    setVatCertificatePdfError(null)
   }, [active, projectId, reset, mode, unitId])
 
   // When project is pre-selected (e.g. unit page), fill region & city from project list or unit fallbacks
@@ -343,8 +408,8 @@ export default function LeadInterestForm({
     })
   }, [projectLocked, regionWatch, cityWatch, lockedProject, fallbackProvinceRegion, fallbackCity])
 
-  const validateSupplierPdf = (file: File | null): string | null => {
-    if (!file) return t('contact.supplierPdfRequired')
+  const validateSupplierPdf = (file: File | null, requiredMessage: string): string | null => {
+    if (!file) return requiredMessage
     const isPdf =
       file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     if (!isPdf) return t('contact.supplierPdfInvalid')
@@ -355,12 +420,15 @@ export default function LeadInterestForm({
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
     setError(null)
-    setSupplierPdfError(null)
+    setCommercialRegistrationPdfError(null)
+    setVatCertificatePdfError(null)
 
     if (data.profile === 'Supplier') {
-      const pdfError = validateSupplierPdf(supplierPdf)
-      if (pdfError) {
-        setSupplierPdfError(pdfError)
+      const crPdfError = validateSupplierPdf(commercialRegistrationPdf, t('contact.commercialRegistrationPdfRequired'))
+      const vatPdfError = validateSupplierPdf(vatCertificatePdf, t('contact.vatCertificatePdfRequired'))
+      setCommercialRegistrationPdfError(crPdfError)
+      setVatCertificatePdfError(vatPdfError)
+      if (crPdfError || vatPdfError) {
         setIsSubmitting(false)
         return
       }
@@ -383,6 +451,12 @@ export default function LeadInterestForm({
         projectLabel ? `Project: ${projectLabel}` : null,
         unitNumber ? `Unit: ${unitNumber}` : null,
         unitId && !unitNumber ? `Unit ID: ${unitId}` : null,
+        data.profile === 'Supplier' && data.companyType ? `Company Type: ${data.companyType}` : null,
+        data.profile === 'Supplier' && data.companyNumber ? `Company Number: ${data.companyNumber}` : null,
+        data.profile === 'Supplier' && data.employeePosition ? `Position: ${data.employeePosition}` : null,
+        data.profile === 'Investor' && data.investmentType?.trim()
+          ? `Investment Type: ${data.investmentType.trim()}`
+          : null,
       ].filter(Boolean)
       const message = meta.length ? `${data.message}\n\n${meta.join('\n')}` : data.message
 
@@ -401,16 +475,25 @@ export default function LeadInterestForm({
           interestedProjectId: effectiveProjectId || undefined,
           interestedPhaseId: phaseId,
           interestedUnitId: unitId,
+          company: data.profile === 'Supplier' ? data.companyName?.trim() : undefined,
+          companyNumber: data.profile === 'Supplier' ? data.companyNumber?.trim() : undefined,
+          companyType: data.profile === 'Supplier' ? data.companyType || undefined : undefined,
+          title: data.profile === 'Supplier' ? data.employeePosition?.trim() : undefined,
           commercialRegistrationNumber:
             data.profile === 'Supplier' ? data.commercialRegistrationNumber?.trim() : undefined,
           taxRegistrationNumber: data.profile === 'Supplier' ? data.taxRegistrationNumber?.trim() : undefined,
+          nationalAddress: data.profile === 'Supplier' ? data.nationalAddress?.trim() : undefined,
+          investmentType: data.profile === 'Investor' ? data.investmentType?.trim() : undefined,
         },
-        data.profile === 'Supplier' && supplierPdf ? { supplierPdf } : undefined
+        data.profile === 'Supplier' && commercialRegistrationPdf && vatCertificatePdf
+          ? { commercialRegistrationPdf, vatCertificatePdf }
+          : undefined
       )
 
       if (response.success) {
         setIsSuccess(true)
-        setSupplierPdf(null)
+        setCommercialRegistrationPdf(null)
+        setVatCertificatePdf(null)
         reset(buildEmptyDefaults(projectId))
         if (isInline) {
           setTimeout(() => setIsSuccess(false), 5000)
@@ -462,10 +545,20 @@ export default function LeadInterestForm({
                   if (!next) return
                   field.onChange(next)
                   if (next !== 'Supplier') {
-                    setSupplierPdf(null)
-                    setSupplierPdfError(null)
+                    setCommercialRegistrationPdf(null)
+                    setVatCertificatePdf(null)
+                    setCommercialRegistrationPdfError(null)
+                    setVatCertificatePdfError(null)
                     setValue('commercialRegistrationNumber', '')
                     setValue('taxRegistrationNumber', '')
+                    setValue('nationalAddress', '')
+                    setValue('companyName', '')
+                    setValue('companyNumber', '')
+                    setValue('companyType', '')
+                    setValue('employeePosition', '')
+                  }
+                  if (next !== 'Investor') {
+                    setValue('investmentType', '')
                   }
                 }}
                 fullWidth
@@ -512,13 +605,26 @@ export default function LeadInterestForm({
         <Grid size={{ xs: 12 }}>
           <TextField
             {...register('name')}
-            label={t('contact.name')}
+            label={isSupplier ? t('contact.employeeName') : t('contact.name')}
             placeholder={t('contact.namePlaceholder')}
             fullWidth
+            required={isSupplier}
             error={!!errors.name}
             helperText={errors.name?.message}
           />
         </Grid>
+        {isSupplier && (
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              {...register('employeePosition')}
+              label={t('contact.employeePosition')}
+              fullWidth
+              required
+              error={!!errors.employeePosition}
+              helperText={errors.employeePosition?.message}
+            />
+          </Grid>
+        )}
         <Grid size={{ xs: 12 }}>
           <TextField
             {...register('email')}
@@ -530,8 +636,65 @@ export default function LeadInterestForm({
             helperText={errors.email?.message}
           />
         </Grid>
+        {isInvestor && (
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              {...register('investmentType')}
+              label={t('contact.investmentType')}
+              placeholder={t('contact.investmentTypePlaceholder')}
+              fullWidth
+              inputProps={{ maxLength: 255 }}
+              error={!!errors.investmentType}
+              helperText={errors.investmentType?.message}
+            />
+          </Grid>
+        )}
         {isSupplier && (
           <>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                {...register('companyName')}
+                label={t('contact.companyName')}
+                fullWidth
+                required
+                error={!!errors.companyName}
+                helperText={errors.companyName?.message}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                {...register('companyNumber')}
+                label={t('contact.companyNumber')}
+                fullWidth
+                required
+                inputProps={{ maxLength: 20 }}
+                error={!!errors.companyNumber}
+                helperText={errors.companyNumber?.message}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="companyType"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth required error={!!errors.companyType}>
+                    <InputLabel id={companyTypeLabelId}>{t('contact.companyType')}</InputLabel>
+                    <Select
+                      labelId={companyTypeLabelId}
+                      label={t('contact.companyType')}
+                      {...field}
+                      value={field.value || ''}
+                    >
+                      <MenuItem value="Company">{t('contact.companyTypeCompany')}</MenuItem>
+                      <MenuItem value="Establishment">{t('contact.companyTypeEstablishment')}</MenuItem>
+                    </Select>
+                    {errors.companyType?.message ? (
+                      <FormHelperText>{errors.companyType.message}</FormHelperText>
+                    ) : null}
+                  </FormControl>
+                )}
+              />
+            </Grid>
             <Grid size={{ xs: 12 }}>
               <TextField
                 {...register('commercialRegistrationNumber')}
@@ -554,23 +717,43 @@ export default function LeadInterestForm({
                 helperText={errors.taxRegistrationNumber?.message}
               />
             </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                {...register('nationalAddress')}
+                label={t('contact.nationalAddress')}
+                fullWidth
+                required
+                multiline
+                minRows={2}
+                error={!!errors.nationalAddress}
+                helperText={errors.nationalAddress?.message || t('contact.nationalAddressHint')}
+              />
+            </Grid>
             {SUPPLIER_GUIDE_PDF_URL ? (
               <Grid size={{ xs: 12 }}>
+                <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+                  {t('contact.supplierGuidePdf')}
+                </Typography>
                 <Link
                   href={SUPPLIER_GUIDE_PDF_URL}
+                  download="شروط-وسياسة-تسجيل-المورد.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="hover"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600 }}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600, mb: 1 }}
                 >
                   <FileDown size={18} />
-                  {t('contact.supplierGuidePdf')}
+                  {t('contact.supplierGuidePdfDownload')}
                 </Link>
+                <SupplierPdfPreview
+                  url={SUPPLIER_GUIDE_PDF_URL}
+                  title={t('contact.supplierGuidePdf')}
+                />
               </Grid>
             ) : null}
             <Grid size={{ xs: 12 }}>
               <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-                {t('contact.supplierPdfLabel')}
+                {t('contact.commercialRegistrationPdf')} *
               </Typography>
               <Button
                 component="label"
@@ -579,22 +762,62 @@ export default function LeadInterestForm({
                 fullWidth
                 sx={{ py: 1.5, justifyContent: 'flex-start', textTransform: 'none' }}
               >
-                {supplierPdf
-                  ? t('contact.supplierPdfSelected', { name: supplierPdf.name })
-                  : t('contact.supplierPdfLabel')}
+                {commercialRegistrationPdf
+                  ? t('contact.supplierPdfSelected', { name: commercialRegistrationPdf.name })
+                  : t('contact.commercialRegistrationPdf')}
                 <input
                   type="file"
                   hidden
                   accept="application/pdf,.pdf"
                   onChange={(e) => {
                     const file = e.target.files?.[0] ?? null
-                    setSupplierPdf(file)
-                    setSupplierPdfError(file ? validateSupplierPdf(file) : t('contact.supplierPdfRequired'))
+                    setCommercialRegistrationPdf(file)
+                    setCommercialRegistrationPdfError(
+                      file
+                        ? validateSupplierPdf(file, t('contact.commercialRegistrationPdfRequired'))
+                        : t('contact.commercialRegistrationPdfRequired')
+                    )
                     e.target.value = ''
                   }}
                 />
               </Button>
-              <FormHelperText error={!!supplierPdfError}>{supplierPdfError || t('contact.supplierPdfHint')}</FormHelperText>
+              <FormHelperText error={!!commercialRegistrationPdfError}>
+                {commercialRegistrationPdfError || t('contact.supplierPdfHint')}
+              </FormHelperText>
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+                {t('contact.vatCertificatePdf')} *
+              </Typography>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<UploadFile />}
+                fullWidth
+                sx={{ py: 1.5, justifyContent: 'flex-start', textTransform: 'none' }}
+              >
+                {vatCertificatePdf
+                  ? t('contact.supplierPdfSelected', { name: vatCertificatePdf.name })
+                  : t('contact.vatCertificatePdf')}
+                <input
+                  type="file"
+                  hidden
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null
+                    setVatCertificatePdf(file)
+                    setVatCertificatePdfError(
+                      file
+                        ? validateSupplierPdf(file, t('contact.vatCertificatePdfRequired'))
+                        : t('contact.vatCertificatePdfRequired')
+                    )
+                    e.target.value = ''
+                  }}
+                />
+              </Button>
+              <FormHelperText error={!!vatCertificatePdfError}>
+                {vatCertificatePdfError || t('contact.supplierPdfHint')}
+              </FormHelperText>
             </Grid>
           </>
         )}
@@ -624,7 +847,7 @@ export default function LeadInterestForm({
         <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             {...register('phone')}
-            label={t('contact.phone')}
+            label={isSupplier ? t('contact.employeePhone') : t('contact.phone')}
             type="tel"
             placeholder={t('contact.phonePlaceholder')}
             fullWidth

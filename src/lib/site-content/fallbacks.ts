@@ -8,7 +8,7 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   community: { en: 'My Community', ar: 'مجتمعي' },
   contact: { en: 'Contact Us', ar: 'تواصل معنا' },
   support: { en: 'Support', ar: 'الدعم' },
-  latestReleases: { en: 'Latest Releases', ar: 'احدث اصداراتنا' },
+  latestReleases: { en: 'Commercial Projects', ar: 'المشاريع التجارية' },
   ourNews: { en: 'Blogs', ar: 'المدوّنة' },
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },
@@ -20,10 +20,10 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
 /** Default site copy when Salesforce has no matching PWA_Content__c records. */
 export const SITE_CONTENT_FALLBACKS: SiteContent = {
   latestReleases: {
-    title: { en: 'Latest Releases', ar: 'أحدث إصداراتنا' },
+    title: { en: 'Commercial Projects', ar: 'المشاريع التجارية' },
     subtitle: {
-      en: 'Explore our portfolio of residential and commercial developments across Saudi Arabia.',
-      ar: 'استكشف محفظتنا من المشاريع السكنية والتجارية في مختلف مناطق المملكة.',
+      en: 'Explore our commercial developments across Saudi Arabia.',
+      ar: 'استكشف مشاريعنا التجارية في مختلف مناطق المملكة.',
     },
   },
   contact: {

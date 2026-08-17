@@ -211,6 +211,11 @@ export interface Lead {
   message?: string;
   commercialRegistrationNumber?: string;
   taxRegistrationNumber?: string;
+  nationalAddress?: string;
+  companyNumber?: string;
+  companyType?: 'Company' | 'Establishment' | '';
+  title?: string;
+  investmentType?: string;
   createdAt?: string;
 }
 
@@ -303,6 +308,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  status?: number;
 }
 
 export interface NewsArticle {

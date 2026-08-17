@@ -45,7 +45,7 @@ export default function Header() {
   ]
 
   const moreNavItems = [
-    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Latest Releases')) },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Commercial Projects')) },
     { path: '/community', label: navLabel('community', t('common.community')) },
     { path: '/contact', label: navLabel('support', t('common.support', 'Support')) },
   ]

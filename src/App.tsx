@@ -67,10 +67,10 @@ function App() {
           if (res.success && res.data) {
             setAuth(res.data, null)
           } else {
-            console.log('[Auth] Keep using cached session from localStorage.')
+            clearAuth()
           }
         } else {
-          console.log('[Auth] Network error, maintaining cached session.')
+          clearAuth()
         }
 
         // Handle Feature Switches
@@ -97,7 +97,7 @@ function App() {
     return () => {
       mounted = false
     }
-  }, [setAuth, setLoading, setFeatures])
+  }, [setAuth, clearAuth, setLoading, setFeatures])
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {

@@ -1,26 +1,27 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  Box, 
-  IconButton, 
-  Typography, 
-  Paper, 
-  TextField, 
-  Button, 
-  Avatar, 
-  Select, 
-  MenuItem, 
-  FormControl, 
+import {
+  Box,
+  IconButton,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
   InputLabel,
   Slide,
-  Fade
 } from '@mui/material'
-import { MessageCircle, X, Send, Bed, Bath, Maximize } from 'lucide-react'
+import { MessageCircle, X, Send, Bed, Bath, Maximize, MapPin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useChatStore } from '../../lib/chatbot/store'
+import { loadChatbotProjects } from '../../lib/chatbot/catalog'
 import CurrencyIcon from '../ui/CurrencyIcon'
 import { getUnitPriceBreakdown } from '../../lib/unitPrice'
+import { BRAND_LOGO_SRC } from '../layout/BrandLogo'
+import type { Unit } from '../../lib/types'
 
 export default function SaraBot() {
   const { t, i18n } = useTranslation()
@@ -34,7 +35,8 @@ export default function SaraBot() {
     handleOptionSelect, 
     handleTextInput,
     resetChat,
-    selectUnitForInquiry
+    selectUnitForInquiry,
+    selectProjectForInquiry,
   } = useChatStore()
   
   const [inputText, setInputText] = useState('')
@@ -49,6 +51,12 @@ export default function SaraBot() {
   useEffect(() => {
     if (isOpen) scrollToBottom()
   }, [messages, isOpen, currentStep, options])
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadChatbotProjects()
+    }
+  }, [isOpen])
 
   const onSubmitText = (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,13 +137,30 @@ export default function SaraBot() {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 zIndex: 10
               }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar src="/images/sara-avatar.jpg" alt="Sara" sx={{ bgcolor: 'white', width: 40, height: 40 }}>
-                    <Typography color="#102d4a" fontWeight="bold">S</Typography>
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
-                      {isRtl ? 'سارة العتيبي' : 'Sara Al Otaibi'}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1.5,
+                      bgcolor: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 0.4,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={BRAND_LOGO_SRC}
+                      alt={t('chatbot.assistantName')}
+                      sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ lineHeight: 1.25 }}>
+                      {t('chatbot.assistantName')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e' }} />
@@ -158,7 +183,7 @@ export default function SaraBot() {
                 gap: 2,
                 bgcolor: '#f8fafc'
               }}>
-                {messages.map((msg, index) => {
+                {messages.map((msg) => {
                   const isBot = msg.type === 'bot'
                   return (
                     <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, width: '100%' }}>
@@ -173,7 +198,28 @@ export default function SaraBot() {
                       >
                         <Box sx={{ display: 'flex', gap: 1, flexDirection: isBot ? 'row' : 'row-reverse' }}>
                           {isBot && (
-                            <Avatar src="/images/sara-avatar.jpg" sx={{ width: 28, height: 28, bgcolor: '#102d4a', fontSize: '0.8rem', mt: 1 }}>S</Avatar>
+                            <Box
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                mt: 1,
+                                flexShrink: 0,
+                                borderRadius: 1,
+                                bgcolor: 'white',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                p: 0.25,
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={BRAND_LOGO_SRC}
+                                alt=""
+                                sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </Box>
                           )}
                           <Box sx={{
                             bgcolor: isBot ? 'white' : '#102d4a',
@@ -219,7 +265,7 @@ export default function SaraBot() {
                               borderRadius: '3px',
                             }
                           }}>
-                            {msg.proposalUnits.map((unit: any) => {
+                            {msg.proposalUnits.map((unit: Unit) => {
                               const { original, afterSubsidy, showBoth } = getUnitPriceBreakdown(unit)
                               const locale = isRtl ? 'ar-SA' : 'en-US'
                               const formatAmt = (n: number) =>
@@ -378,6 +424,146 @@ export default function SaraBot() {
                           </Box>
                         </motion.div>
                       )}
+
+                      {msg.proposalProjects && msg.proposalProjects.length > 0 && (
+                        <Box sx={{
+                          display: 'flex',
+                          gap: 1.5,
+                          overflowX: 'auto',
+                          py: 1,
+                          px: 0.5,
+                          scrollSnapType: 'x mandatory',
+                          '&::-webkit-scrollbar': { height: '6px' },
+                          '&::-webkit-scrollbar-thumb': {
+                            backgroundColor: '#cbd5e1',
+                            borderRadius: '3px',
+                          }
+                        }}>
+                          {msg.proposalProjects.map((project) => {
+                            const name = isRtl ? project.nameAr || project.name : project.name
+                            const location = isRtl ? project.locationAr || project.location : project.location
+                            const description = isRtl ? project.descriptionAr || project.description : project.description
+                            return (
+                              <Paper
+                                key={project.id}
+                                elevation={2}
+                                sx={{
+                                  minWidth: 230,
+                                  maxWidth: 230,
+                                  borderRadius: 3,
+                                  overflow: 'hidden',
+                                  border: '1px solid #e2e8f0',
+                                  bgcolor: 'white',
+                                  scrollSnapAlign: 'start',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                }}
+                              >
+                                <Box sx={{ position: 'relative', height: 110, bgcolor: '#e2e8f0' }}>
+                                  {project.coverImageUrl ? (
+                                    <img
+                                      src={project.coverImageUrl}
+                                      alt={name}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  ) : (
+                                    <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+                                      <Box component="img" src={BRAND_LOGO_SRC} alt="" sx={{ maxHeight: 64, maxWidth: '80%', objectFit: 'contain' }} />
+                                    </Box>
+                                  )}
+                                </Box>
+                                <Box sx={{ p: 1.5, flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <Typography variant="subtitle2" fontWeight="bold" noWrap color="#1e293b" sx={{ fontSize: '0.85rem' }}>
+                                    {name}
+                                  </Typography>
+                                  {location && (
+                                    <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                                      <MapPin size={12} />
+                                      {location}
+                                    </Typography>
+                                  )}
+                                  {description && (
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{
+                                        fontSize: '0.7rem',
+                                        lineHeight: 1.4,
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 3,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                      }}
+                                    >
+                                      {description}
+                                    </Typography>
+                                  )}
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 'auto', pt: 1 }}>
+                                    <Button
+                                      component={Link}
+                                      to={`/project/${project.id}`}
+                                      variant="outlined"
+                                      size="small"
+                                      sx={{
+                                        textTransform: 'none',
+                                        fontSize: '0.7rem',
+                                        py: 0.5,
+                                        borderRadius: 1.5,
+                                        color: '#102d4a',
+                                        borderColor: '#102d4a',
+                                        fontWeight: 'bold',
+                                        '&:hover': { bgcolor: '#f1f5f9', borderColor: '#102d4a' }
+                                      }}
+                                    >
+                                      {t('chatbot.cta.viewProject')}
+                                    </Button>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={() => selectProjectForInquiry(project)}
+                                      sx={{
+                                        textTransform: 'none',
+                                        fontSize: '0.7rem',
+                                        py: 0.5,
+                                        borderRadius: 1.5,
+                                        bgcolor: '#102d4a',
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        '&:hover': { bgcolor: '#1e4670' }
+                                      }}
+                                    >
+                                      {t('chatbot.cta.interested')}
+                                    </Button>
+                                  </Box>
+                                </Box>
+                              </Paper>
+                            )
+                          })}
+                        </Box>
+                      )}
+
+                      {msg.links && msg.links.length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, [isRtl ? 'pr' : 'pl']: 4.5 }}>
+                          {msg.links.map((link) => (
+                            <Button
+                              key={link.to}
+                              component={Link}
+                              to={link.to}
+                              variant="contained"
+                              size="small"
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '0.75rem',
+                                bgcolor: '#102d4a',
+                                borderRadius: 4,
+                                '&:hover': { bgcolor: '#1e4670' }
+                              }}
+                            >
+                              {t(link.labelKey)}
+                            </Button>
+                          ))}
+                        </Box>
+                      )}
                     </Box>
                   )
                 })}
@@ -409,13 +595,17 @@ export default function SaraBot() {
                           '&:hover': { bgcolor: '#f1f5f9', borderColor: '#102d4a' }
                         }}
                       >
-                        {t(opt.labelKey)}
+                        {opt.labelKey
+                          ? t(opt.labelKey)
+                          : isRtl
+                            ? opt.labelAr || opt.label
+                            : opt.label || opt.labelAr}
                       </Button>
                     ))}
                   </Box>
                 )}
 
-                {(inputType === 'text' || inputType === 'phone') && (
+                {(inputType === 'text' || inputType === 'phone' || ((currentStep === 'GREETING' || currentStep === 'PROJECTS_LIST') && inputType === 'options')) && (
                   <form onSubmit={onSubmitText} style={{ display: 'flex', gap: '8px' }}>
                     <TextField
                       fullWidth

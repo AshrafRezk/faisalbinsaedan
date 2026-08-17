@@ -5,10 +5,10 @@
  * {
  *   firstName, lastName, email?, phone, countryCode?, region?, city?, unitType?,
  *   profile, message?, company?,
- *   commercialRegistrationNumber?, taxRegistrationNumber?,
+ *   commercialRegistrationNumber?, taxRegistrationNumber?, nationalAddress?, investmentType?,
  *   interestedProjectName?, interestedProjectId?, interestedPhaseId?, interestedUnitId?,
  *   rentalProjectId?, rentalBudget?, numberOfRooms?, rentalStartDate?, rentalEndDate?,
- *   supplierAttachment?: { fileName, contentType, base64 }
+ *   commercialRegistrationAttachment?, vatCertificateAttachment?
  * }
  */
 
@@ -138,6 +138,29 @@ function buildStandardLeadPayload(body) {
   const tax = String(body.taxRegistrationNumber || '').trim()
   if (tax) payload.Tax_Registration_Number__c = tax.slice(0, 20)
 
+  const companyNumber = String(body.companyNumber || '').trim()
+  if (companyNumber) payload.Company_Number__c = companyNumber.slice(0, 20)
+
+  const companyType = String(body.companyType || '').trim()
+  if (companyType === 'Company' || companyType === 'Establishment') {
+    payload.Company_Type__c = companyType
+  }
+
+  const title = String(body.title || body.employeePosition || '').trim()
+  if (title) payload.Title = title.slice(0, 128)
+
+  const nationalAddress = String(body.nationalAddress || '').trim()
+  if (nationalAddress) {
+    payload.National_Address__c = nationalAddress.slice(0, 1000)
+    const compact = nationalAddress.replace(/\s+/g, '')
+    if (/^[A-Za-z0-9]{8}$/.test(compact)) {
+      payload.Abbreviated_National_Address_Code__c = compact.toUpperCase()
+    }
+  }
+
+  const investmentType = String(body.investmentType || '').trim()
+  if (investmentType) payload.Investment_Type__c = investmentType.slice(0, 255)
+
   // Same API names as website bot (salesforce-lead.js)
   const countryField = process.env.SALESFORCE_LEAD_COUNTRY_FIELD || 'Mobile_Country__c'
   const regionField = process.env.SALESFORCE_LEAD_REGION_FIELD || 'Region_Province__c'
@@ -255,13 +278,13 @@ async function patchLeadFields(instanceUrl, accessToken, leadId, fields, label) 
   }
 }
 
-async function uploadSupplierPdf(instanceUrl, accessToken, leadId, attachment) {
-  const fileName = String(attachment.fileName || 'supplier-document.pdf').trim()
+async function uploadLeadPdf(instanceUrl, accessToken, leadId, attachment, fallbackTitle) {
+  const fileName = String(attachment.fileName || `${fallbackTitle}.pdf`).trim()
   const contentType = String(attachment.contentType || 'application/pdf').trim()
   const base64 = String(attachment.base64 || '').trim()
 
   if (!base64) {
-    throw new Error('Supplier PDF payload is empty')
+    throw new Error(`${fallbackTitle} PDF payload is empty`)
   }
 
   if (contentType !== 'application/pdf' && !fileName.toLowerCase().endsWith('.pdf')) {
@@ -269,8 +292,8 @@ async function uploadSupplierPdf(instanceUrl, accessToken, leadId, attachment) {
   }
 
   const versionPayload = {
-    Title: fileName.replace(/\.pdf$/i, '') || 'Supplier Registration',
-    PathOnClient: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
+    Title: `${fallbackTitle} - ${fileName.replace(/\.pdf$/i, '')}`.slice(0, 80),
+    PathOnClient: fileName.toLowerCase().endsWith('.pdf') ? fileName : `${fileName}.pdf`,
     VersionData: base64,
     FirstPublishLocationId: leadId,
   }
@@ -287,10 +310,26 @@ async function uploadSupplierPdf(instanceUrl, accessToken, leadId, attachment) {
 
   if (!versionResponse.ok) {
     const errorText = await versionResponse.text()
-    throw new Error(`Supplier PDF upload failed (${versionResponse.status}): ${errorText}`)
+    throw new Error(`${fallbackTitle} PDF upload failed (${versionResponse.status}): ${errorText}`)
   }
 
   return versionResponse.json()
+}
+
+function assertPdfAttachment(attachment, label) {
+  if (!attachment?.base64) {
+    return `${label} is required as a PDF`
+  }
+  const fileName = String(attachment.fileName || '')
+  const contentType = String(attachment.contentType || '')
+  if (contentType !== 'application/pdf' && !fileName.toLowerCase().endsWith('.pdf')) {
+    return `${label} must be a PDF file`
+  }
+  const approxBytes = Math.floor((String(attachment.base64).length * 3) / 4)
+  if (approxBytes > 5 * 1024 * 1024) {
+    return `${label} must be 5 MB or smaller`
+  }
+  return null
 }
 
 export const handler = async (event) => {
@@ -320,20 +359,36 @@ export const handler = async (event) => {
     if (profile === 'Supplier') {
       const cr = String(body.commercialRegistrationNumber || '').trim()
       const tax = String(body.taxRegistrationNumber || '').trim()
+      const nationalAddress = String(body.nationalAddress || '').trim()
       if (!cr) {
         return json(400, { success: false, error: 'Commercial Registration Number is required' })
       }
       if (!tax) {
         return json(400, { success: false, error: 'Tax Registration Number is required' })
       }
-      const attachment = body.supplierAttachment
-      if (!attachment?.base64) {
-        return json(400, { success: false, error: 'Supplier registration requires a PDF attachment' })
+      if (!nationalAddress) {
+        return json(400, { success: false, error: 'National Address is required' })
       }
-      const approxBytes = Math.floor((String(attachment.base64).length * 3) / 4)
-      if (approxBytes > 5 * 1024 * 1024) {
-        return json(400, { success: false, error: 'PDF must be 5 MB or smaller' })
+      if (!String(body.company || body.companyName || '').trim()) {
+        return json(400, { success: false, error: 'Company Name is required' })
       }
+      if (!String(body.companyNumber || '').trim()) {
+        return json(400, { success: false, error: 'Company Number is required' })
+      }
+      const companyType = String(body.companyType || '').trim()
+      if (companyType !== 'Company' && companyType !== 'Establishment') {
+        return json(400, { success: false, error: 'Company Type is required' })
+      }
+      if (!String(body.title || body.employeePosition || '').trim()) {
+        return json(400, { success: false, error: 'Employee position is required' })
+      }
+      const crPdfError = assertPdfAttachment(
+        body.commercialRegistrationAttachment,
+        'Commercial Registration'
+      )
+      if (crPdfError) return json(400, { success: false, error: crPdfError })
+      const vatPdfError = assertPdfAttachment(body.vatCertificateAttachment, 'VAT Certificate')
+      if (vatPdfError) return json(400, { success: false, error: vatPdfError })
     }
 
     const { accessToken, instanceUrl } = await getSalesforceAccessToken()
@@ -396,8 +451,21 @@ export const handler = async (event) => {
       console.warn('[Leads] Lead created but some custom fields were not saved:', patchWarnings.join(' | '))
     }
 
-    if (profile === 'Supplier' && body.supplierAttachment) {
-      await uploadSupplierPdf(instanceUrl, accessToken, leadId, body.supplierAttachment)
+    if (profile === 'Supplier') {
+      await uploadLeadPdf(
+        instanceUrl,
+        accessToken,
+        leadId,
+        body.commercialRegistrationAttachment,
+        'Commercial Registration'
+      )
+      await uploadLeadPdf(
+        instanceUrl,
+        accessToken,
+        leadId,
+        body.vatCertificateAttachment,
+        'VAT Certificate'
+      )
     }
 
     return json(200, {

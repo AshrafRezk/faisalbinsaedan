@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Container, Grid, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
@@ -8,14 +8,8 @@ import { getProjects } from '../lib/api-client'
 import { useSiteContent } from '../contexts/SiteContentContext'
 import ProjectListingCard, {
   ProjectListingCardSkeleton,
-  getAvailableCount,
   type ProjectWithAvailability,
 } from '../components/project/ProjectListingCard'
-
-function projectHasAvailability(project: ProjectWithAvailability): boolean {
-  if (project.hasAvailability) return true
-  return getAvailableCount(project) > 0
-}
 
 export default function LatestReleases() {
   const { t, i18n } = useTranslation()
@@ -29,12 +23,12 @@ export default function LatestReleases() {
     let cancelled = false
     async function loadProjects() {
       try {
-        const res = await getProjects()
+        const res = await getProjects({ projectType: 'Commercial' })
         if (!cancelled && res.success && res.data) {
           setProjects(res.data)
         }
       } catch (err) {
-        console.error('Failed to load projects', err)
+        console.error('Failed to load commercial projects', err)
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -45,12 +39,7 @@ export default function LatestReleases() {
     }
   }, [])
 
-  const filteredProjects = useMemo(
-    () => projects.filter(projectHasAvailability),
-    [projects]
-  )
-
-  const countLabel = t('latestReleasesPage.count', { count: filteredProjects.length })
+  const countLabel = t('latestReleasesPage.count', { count: projects.length })
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: { xs: 6, md: 10 } }}>
@@ -117,7 +106,7 @@ export default function LatestReleases() {
               <ProjectListingCardSkeleton key={i} />
             ))}
           </Grid>
-        ) : filteredProjects.length === 0 ? (
+        ) : projects.length === 0 ? (
           <Box
             sx={(theme) => ({
               textAlign: 'center',
@@ -138,7 +127,7 @@ export default function LatestReleases() {
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {filteredProjects.map((project, index) => (
+            {projects.map((project, index) => (
               <ProjectListingCard key={project.id} project={project} index={index} />
             ))}
           </Grid>

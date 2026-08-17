@@ -127,7 +127,9 @@ async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
     Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c,
     Finishing__c, Usage_Type__c, View__c,
     Eligible_for_Subsidies__c, Subsidies__c,
-    Unit_Image__c
+    Unit_Image__c,
+    Building__r.Block__r.Phase__r.Project__c,
+    Building__r.Block__r.Phase__r.Project__r.Name
     FROM ${objectName} WHERE Id IN (${idList})`
   const res = await sfQuery(instanceUrl, accessToken, soql)
   const map = new Map()
@@ -135,6 +137,14 @@ async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
     map.set(row.Id, row)
   }
   return map
+}
+
+function projectFromUnitRecord(unitRecord) {
+  const phase = unitRecord?.Building__r?.Block__r?.Phase__r
+  return {
+    id: pickId(phase?.Project__c) || '',
+    name: String(phase?.Project__r?.Name || '').trim(),
+  }
 }
 
 function resolveProjectFromField(projectFieldValue, projectsById) {
@@ -203,6 +213,7 @@ export const handler = async (event) => {
       'Block__c',
       'Phase__c',
       'Payment_Method__c',
+      'Opportunity__r.Unit__c',
     ].join(', ')
 
     const contractSoql = `SELECT ${contractFields}
@@ -216,22 +227,36 @@ export const handler = async (event) => {
     const contracts = contractRes.records || []
     console.log(`[my-opportunities] Found ${contracts.length} contracts for account ${accountId}`)
 
-    const projectIds = contracts.map((c) => pickId(c.Project__c)).filter(Boolean)
-    const unitIds = contracts.map((c) => pickId(c.Unit__c)).filter(Boolean)
-    const [projectsById, unitsById] = await Promise.all([
-      fetchProjectsByIds(instanceUrl, accessToken, projectIds),
-      fetchUnitsByIds(instanceUrl, accessToken, unitIds),
-    ])
+    const unitIds = contracts
+      .map((c) => pickId(c.Opportunity__r?.Unit__c) || pickId(c.Unit__c))
+      .filter(Boolean)
+    const unitsById = await fetchUnitsByIds(instanceUrl, accessToken, unitIds)
+    const projectIds = [
+      ...unitIds.map((id) => projectFromUnitRecord(unitsById.get(id)).id),
+      ...contracts.map((c) => pickId(c.Project__c)),
+    ].filter(Boolean)
+    const projectsById = await fetchProjectsByIds(instanceUrl, accessToken, projectIds)
 
     // 3) Map Contract__c to standard Opportunity/Unit structures expected by the frontend
     const mappedOpportunities = contracts.map((c) => {
-      const project = resolveProjectFromField(c.Project__c, projectsById)
-      const unit = resolveUnitFromField(c.Unit__c, unitsById)
+      const oppUnitId = pickId(c.Opportunity__r?.Unit__c)
+      const unitFieldValue = oppUnitId || c.Unit__c
+      const unit = resolveUnitFromField(unitFieldValue, unitsById)
+      if (!unit.id && oppUnitId) unit.id = oppUnitId
+      if (!unit.label && c.Unit__c) unit.label = pickLabel(c.Unit__c)
       const u = unit.record || {}
+      const unitProject = projectFromUnitRecord(u)
+      const oppProjectId = unitProject.id
+      const oppProjectName = unitProject.name || pickLabel(c.Project__c)
       
+      const projectFromLookup = oppProjectId ? projectsById.get(oppProjectId) : undefined
+      const project = projectFromLookup
+        ? { id: oppProjectId, name: projectFromLookup.name || oppProjectName, heroImageUrl: projectFromLookup.heroImageUrl }
+        : resolveProjectFromField(c.Project__c, projectsById)
+
       const mappedUnit = {
         id: unit.id || c.Id,
-        projectId: project.id || pickId(c.Project__c) || '',
+        projectId: project.id || oppProjectId || pickId(c.Project__c) || '',
         phaseId: '',
         unitNumber: unit.label || 'N/A',
         externalId: c.Name,
@@ -256,8 +281,8 @@ export const handler = async (event) => {
         projectHeroImage: project.heroImageUrl,
         paymentProgress: Number(c.Unit_Cumulative_Progress_Percentage__c || 0), // maps actual cumulative progress!
         paymentStatus: c.Payment_Method__c ?? undefined,
-        projectName: project.name || undefined,
-        projectNameAr: project.name || undefined,
+        projectName: project.name || oppProjectName || undefined,
+        projectNameAr: project.name || oppProjectName || undefined,
         phaseName: c.Phase__c ?? undefined,
         phaseNameAr: c.Phase__c ?? undefined,
         buildingName: c.Building__c ?? undefined,
@@ -266,7 +291,7 @@ export const handler = async (event) => {
 
       return {
         id: c.Id,
-        name: project.name || 'Unit Contract',
+        name: project.name || oppProjectName || 'Unit Contract',
         stageName: `${c.Name}`, // contract number (as displayed in screenshot)
         closeDate: null,
         amount: Number(c.Unit_Final_Price__c || c.Unit_Price__c || 0),

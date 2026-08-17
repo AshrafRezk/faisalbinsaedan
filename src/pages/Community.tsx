@@ -28,7 +28,7 @@ export default function Community() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isRtl = i18n.language === 'ar'
-  const { user } = useAuthStore()
+  const { user, clearAuth } = useAuthStore()
   const [units, setUnits] = useState<Unit[]>([])
   const [opportunities, setOpportunities] = useState<MyOpportunity[]>([])
   const [cases, setCases] = useState<Case[]>([])
@@ -47,9 +47,14 @@ export default function Community() {
       try {
         const [oppRes, casesRes] = await Promise.all([getMyOpportunities(), getCases()])
 
+        if (oppRes.status === 401 || casesRes.status === 401) {
+          clearAuth()
+          navigate('/login', { replace: true })
+          return
+        }
+
         if (oppRes.success && oppRes.data) {
           setOpportunities(oppRes.data)
-          console.log('oppRes.data', oppRes.data)
           setUnits(oppRes.data.flatMap((o) => o.units || []))
         }
         if (casesRes.success && casesRes.data) {
@@ -63,7 +68,7 @@ export default function Community() {
     }
 
     loadData()
-  }, [user, navigate])
+  }, [user, navigate, clearAuth])
 
   const refreshCases = async () => {
     const casesRes = await getCases()

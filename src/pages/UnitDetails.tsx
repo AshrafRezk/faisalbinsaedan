@@ -26,10 +26,11 @@ import { getUnit } from '../lib/api-client'
 import { isModelImageFile, isModelPdfFile } from '../lib/projectMedia'
 import { useAuthStore, useFeatureSwitchStore } from '../lib/store'
 import { Unit, ProjectModelFile } from '../lib/types'
+import { getUnitDisplayPrice } from '../lib/unitPrice'
+import UnitPriceDisplay from '../components/units/UnitPriceDisplay'
 import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import ProjectBrochureViewer from '../components/project/ProjectBrochureViewer'
 import SubsidyBadges from '../components/units/SubsidyBadges'
-import CurrencyIcon from '../components/ui/CurrencyIcon'
 import FinanceCalculatorModal, { SakaniMathIcon } from '../components/ui/FinanceCalculatorModal'
 
 export default function UnitDetails() {
@@ -66,20 +67,6 @@ export default function UnitDetails() {
     }
     loadUnit()
   }, [id])
-
-  const formatPrice = (price: number) => {
-    const formatted = new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
-      style: 'decimal',
-      maximumFractionDigits: 0,
-    }).format(price)
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        {formatted}
-        <CurrencyIcon theme="light" className="mx-2" />
-      </Box>
-    )
-  }
-
 
   if (isLoading) {
     return (
@@ -251,14 +238,9 @@ export default function UnitDetails() {
                   height: 32,
                 }}
               />
-              <Typography
-                variant="h3"
-                fontWeight="bold"
-                color="primary.main"
-                sx={{ mb: 1, fontSize: { xs: '2rem', md: '2.5rem' } }}
-              >
-                {formatPrice(unit.price)}
-              </Typography>
+              <Box sx={{ mb: 1 }}>
+                <UnitPriceDisplay unit={unit} variant="detailed" />
+              </Box>
               <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
                 {unit.projectNameAr} • {unit.phaseNameAr}
               </Typography>
@@ -601,7 +583,7 @@ export default function UnitDetails() {
       <FinanceCalculatorModal
         isOpen={isCalculatorOpen}
         onClose={() => setIsCalculatorOpen(false)}
-        propertyPrice={unit.price}
+        propertyPrice={getUnitDisplayPrice(unit)}
         onBookClick={() => setIsRegisterModalOpen(true)}
       />
 

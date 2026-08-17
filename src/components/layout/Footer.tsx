@@ -2,7 +2,6 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Container, Link, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import BrandLogo from './BrandLogo'
-import AppInstallButtons from './AppInstallButtons'
 import { useSiteContent } from '../../contexts/SiteContentContext'
 
 export default function Footer() {
@@ -14,6 +13,7 @@ export default function Footer() {
     { path: '/', label: navLabel('home', t('common.home')) },
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
+    { path: '/search?usageType=Residential', label: navLabel('residentialUnits', t('common.residentialUnits', 'Residential Units')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
     { path: '/community', label: navLabel('community', t('common.community')) },
     { path: '/contact', label: navLabel('contact', t('common.contact')) },
@@ -44,13 +44,6 @@ export default function Footer() {
           <RouterLink to="/" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
             <BrandLogo variant="footer" />
           </RouterLink>
-
-          <Box sx={{ my: { xs: 3, sm: 0 }, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2" color="text.secondary" fontWeight="medium">
-              {t('installBanner.downloadApp', 'Download Our App')}
-            </Typography>
-            <AppInstallButtons />
-          </Box>
 
           <Box
             component="nav"

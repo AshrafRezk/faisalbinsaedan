@@ -13,6 +13,7 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },
   commercial: { en: 'Commercial & Rental', ar: 'التجاري والتأجير' },
+  residentialUnits: { en: 'Residential Units', ar: 'الوحدات السكنية' },
 }
 
 /** Default site copy when Salesforce has no matching PWA_Content__c records. */

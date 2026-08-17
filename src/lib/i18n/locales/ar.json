@@ -24,7 +24,8 @@
     "edit": "تعديل",
     "more": "المزيد",
     "call": "اتصال",
-    "commercial": "التجاري والتأجير"
+    "commercial": "التجاري والتأجير",
+    "residentialUnits": "الوحدات السكنية"
   },
   "footer": {
     "nav": "تذييل الصفحة",
@@ -256,6 +257,8 @@
   "unit": {
     "details": "تفاصيل الوحدة",
     "price": "السعر",
+    "priceBeforeSubsidy": "السعر قبل الدعم",
+    "priceAfterSubsidy": "السعر بعد الدعم",
     "bedrooms": "غرف",
     "bathrooms": "حمامات",
     "area": "المساحة",
@@ -405,6 +408,8 @@
   "calculator": {
     "title": "حاسبة التمويل",
     "unitPrice": "سعر الوحدة",
+    "priceBeforeSubsidy": "السعر قبل الدعم",
+    "priceAfterSubsidy": "السعر بعد الدعم",
     "downPayment": "الدفعة الأولى",
     "downPaymentValue": "{{value}}%",
     "loanTerm": "مدة القرض",
@@ -480,7 +485,8 @@
   "installBanner": {
     "title": "تجربة أفضل مع التطبيق",
     "description": "قم بتثبيت تطبيق فيصل بن سعيدان للوصول السريع",
-    "install": "تثبيت"
+    "install": "تثبيت",
+    "downloadApp": "حمّل التطبيق"
   },
   "brokerLanding": {
     "badge": "نطاق عقاري مميز",

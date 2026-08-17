@@ -46,6 +46,9 @@ export interface ProjectMapUnit {
   status: string;
   statusGroup: 'available' | 'reserved' | 'sold' | 'blocked' | 'unknown';
   price?: number;
+  finalPrice?: number;
+  eligibleForSubsidies?: boolean;
+  subsidies?: string;
   bedrooms?: number;
   bathrooms?: number;
   bua?: number;

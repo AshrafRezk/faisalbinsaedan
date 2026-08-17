@@ -18,6 +18,7 @@ import {
 } from '@mui/material'
 import { X, Trash2 } from 'lucide-react'
 import { Unit } from '../../lib/types'
+import { getUnitOriginalPrice, getUnitDisplayPrice } from '../../lib/unitPrice'
 import UnitCard from '../search/UnitCard'
 import ShareButton from '../ui/ShareButton'
 import CurrencyIcon from '../ui/CurrencyIcon'
@@ -44,7 +45,10 @@ export default function UnitComparison({ units, isOpen, onClose, onRemove }: Uni
   }
 
   const comparisonFields = [
-    { key: 'price', label: 'السعر', format: (unit: Unit) => formatPrice(unit.price) },
+    { key: 'priceBefore', label: 'السعر قبل الدعم', format: (unit: Unit) => formatPrice(getUnitOriginalPrice(unit)) },
+    { key: 'priceAfter', label: 'السعر بعد الدعم', format: (unit: Unit) => (
+      unit.eligibleForSubsidies ? formatPrice(getUnitDisplayPrice(unit)) : '—'
+    ) },
     { key: 'bedrooms', label: 'الغرف', format: (unit: Unit) => `${unit.bedrooms} غرف` },
     { key: 'bathrooms', label: 'الحمامات', format: (unit: Unit) => unit.bathrooms || 'N/A' },
     { key: 'area', label: 'المساحة', format: (unit: Unit) => `${unit.area} م²` },

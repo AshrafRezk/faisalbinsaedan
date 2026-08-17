@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useChatStore } from '../../lib/chatbot/store'
 import CurrencyIcon from '../ui/CurrencyIcon'
+import { getUnitPriceBreakdown } from '../../lib/unitPrice'
 
 export default function SaraBot() {
   const { t, i18n } = useTranslation()
@@ -219,10 +220,13 @@ export default function SaraBot() {
                             }
                           }}>
                             {msg.proposalUnits.map((unit: any) => {
-                              const formattedPrice = new Intl.NumberFormat(isRtl ? 'ar-SA' : 'en-US', {
-                                style: 'decimal',
-                                maximumFractionDigits: 0,
-                              }).format(unit.price)
+                              const { original, afterSubsidy, showBoth } = getUnitPriceBreakdown(unit)
+                              const locale = isRtl ? 'ar-SA' : 'en-US'
+                              const formatAmt = (n: number) =>
+                                new Intl.NumberFormat(locale, {
+                                  style: 'decimal',
+                                  maximumFractionDigits: 0,
+                                }).format(n)
 
                               return (
                                 <Paper
@@ -278,11 +282,34 @@ export default function SaraBot() {
                                     </Typography>
 
                                     {/* Price & Currency */}
-                                    <Box sx={{ display: 'inline-flex', alignItems: 'center', mt: 0.5, gap: 0.25 }}>
-                                      <Typography variant="body2" fontWeight="bold" color="#102d4a" sx={{ fontSize: '0.9rem' }}>
-                                        {formattedPrice}
-                                      </Typography>
-                                      <CurrencyIcon theme="light" style={{ height: '1.15em' }} />
+                                    <Box sx={{ mt: 0.5 }}>
+                                      {showBoth ? (
+                                        <>
+                                          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                              sx={{ fontSize: '0.7rem', textDecoration: 'line-through' }}
+                                            >
+                                              {formatAmt(original)}
+                                            </Typography>
+                                            <CurrencyIcon theme="light" style={{ height: '0.9em' }} />
+                                          </Box>
+                                          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, mt: 0.25 }}>
+                                            <Typography variant="body2" fontWeight="bold" color="#102d4a" sx={{ fontSize: '0.9rem' }}>
+                                              {formatAmt(afterSubsidy)}
+                                            </Typography>
+                                            <CurrencyIcon theme="light" style={{ height: '1.15em' }} />
+                                          </Box>
+                                        </>
+                                      ) : (
+                                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                                          <Typography variant="body2" fontWeight="bold" color="#102d4a" sx={{ fontSize: '0.9rem' }}>
+                                            {formatAmt(original)}
+                                          </Typography>
+                                          <CurrencyIcon theme="light" style={{ height: '1.15em' }} />
+                                        </Box>
+                                      )}
                                     </Box>
 
                                     {/* Specifications */}

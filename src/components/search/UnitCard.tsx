@@ -8,7 +8,7 @@ import { Unit } from '../../lib/types'
 import FavoriteButton from '../ui/FavoriteButton'
 import LazyImage from '../ui/LazyImage'
 import SubsidyBadges from '../units/SubsidyBadges'
-import CurrencyIcon from '../ui/CurrencyIcon'
+import UnitPriceDisplay from '../units/UnitPriceDisplay'
 
 interface UnitCardProps {
   unit: Unit
@@ -19,13 +19,6 @@ interface UnitCardProps {
 export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCardProps) {
   const { t, i18n } = useTranslation()
   const isList = variant === 'list'
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
-      style: 'decimal',
-      maximumFractionDigits: 0,
-    }).format(price)
-  }
 
   const statusColors: Record<Unit['status'], 'success' | 'warning' | 'error'> = {
     Available: 'success',
@@ -117,10 +110,9 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
         py: isList ? { xs: 2, sm: 2.5 } : undefined,
       }}
     >
-      <Typography variant="h6" fontWeight="bold" color="primary.main" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-        {formatPrice(unit.price)}
-        <CurrencyIcon theme="light" className="mx-1" />
-      </Typography>
+      <Box sx={{ mb: 1 }}>
+        <UnitPriceDisplay unit={unit} variant="compact" />
+      </Box>
 
       <Typography
         variant="body2"

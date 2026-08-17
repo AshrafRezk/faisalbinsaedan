@@ -24,7 +24,8 @@
     "edit": "Edit",
     "more": "More",
     "call": "Call",
-    "commercial": "Commercial & Rental"
+    "commercial": "Commercial & Rental",
+    "residentialUnits": "Residential Units"
   },
   "footer": {
     "nav": "Footer navigation",
@@ -256,6 +257,8 @@
   "unit": {
     "details": "Unit Details",
     "price": "Price",
+    "priceBeforeSubsidy": "Price before subsidy",
+    "priceAfterSubsidy": "Price after subsidy",
     "bedrooms": "Bedrooms",
     "bathrooms": "Bathrooms",
     "area": "Area",
@@ -405,6 +408,8 @@
   "calculator": {
     "title": "Finance Calculator",
     "unitPrice": "Unit Price",
+    "priceBeforeSubsidy": "Price before subsidy",
+    "priceAfterSubsidy": "Price after subsidy",
     "downPayment": "Down Payment",
     "downPaymentValue": "{{value}}%",
     "loanTerm": "Loan Term",
@@ -480,7 +485,8 @@
   "installBanner": {
     "title": "Better experience with the app",
     "description": "Install Faisal Bin Saedan app for quick access",
-    "install": "Install"
+    "install": "Install",
+    "downloadApp": "Download App"
   },
   "brokerLanding": {
     "badge": "Premium Real Estate Domain",

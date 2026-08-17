@@ -31,7 +31,7 @@ export interface SalesforceUnitDTO {
   externalId: string;
   status: string;
   price: number;
-  finalPrice: number;
+  finalPrice?: number;
   currencyCode: string;
   unitImage: string;
   images: string[];

@@ -702,6 +702,9 @@ interface SalesforceUnitMapRecord {
   Name: string
   Status__c?: string
   Price__c?: number
+  Final_Price__c?: number
+  Eligible_for_Subsidies__c?: string
+  Subsidies__c?: number
   Number_of_Bedrooms__c?: number
   Number_of_Bathrooms__c?: number
   BUA__c?: number
@@ -725,7 +728,7 @@ export async function getProjectMapUnits(projectId: string) {
     return { success: false as const, error: 'Invalid project id' }
   }
 
-  const CACHE_KEY = `binsaedan_project_map_units_v2_${projectId}`
+  const CACHE_KEY = `binsaedan_project_map_units_v4_${projectId}`
   const CACHE_TTL = 5 * 60 * 1000
 
   try {
@@ -741,7 +744,8 @@ export async function getProjectMapUnits(projectId: string) {
   }
 
   try {
-    const soql = `SELECT Id, Name, Status__c, Price__c, Number_of_Bedrooms__c, Number_of_Bathrooms__c, BUA__c,
+    const soql = `SELECT Id, Name, Status__c, Price__c, Final_Price__c, Eligible_for_Subsidies__c, Subsidies__c,
+                  Number_of_Bedrooms__c, Number_of_Bathrooms__c, BUA__c,
                   Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c, Map_Show_On_Map__c,
                   Building__r.Name, Building__r.Block__r.Phase__r.Name
                   FROM Unit__c
@@ -755,6 +759,9 @@ export async function getProjectMapUnits(projectId: string) {
       status: (u.Status__c || '').trim() || 'Unknown',
       statusGroup: normalizeUnitStatusGroup(u.Status__c),
       price: typeof u.Price__c === 'number' ? u.Price__c : undefined,
+      finalPrice: typeof u.Final_Price__c === 'number' ? u.Final_Price__c : undefined,
+      eligibleForSubsidies: parseEligibleForSubsidies(u.Eligible_for_Subsidies__c),
+      subsidies: u.Subsidies__c != null ? String(u.Subsidies__c) : undefined,
       bedrooms: typeof u.Number_of_Bedrooms__c === 'number' ? u.Number_of_Bedrooms__c : undefined,
       bathrooms: typeof u.Number_of_Bathrooms__c === 'number' ? u.Number_of_Bathrooms__c : undefined,
       bua: typeof u.BUA__c === 'number' ? u.BUA__c : undefined,
@@ -1518,7 +1525,7 @@ export async function getUnit(id: string) {
 
     let relatedUnits: Unit[] = []
     if (unit.projectId) {
-      const relatedSoql = `SELECT Id, Name, Unit_Image__c, Price__c, Final_Price__c, Status__c,
+      const relatedSoql = `SELECT Id, Name, Unit_Image__c, Price__c, Final_Price__c, Eligible_for_Subsidies__c, Subsidies__c, Status__c,
         Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c
         FROM Unit__c
         WHERE Project__c = '${unit.projectId}' AND Id != '${id}'
@@ -1530,6 +1537,8 @@ export async function getUnit(id: string) {
         Unit_Image__c?: string
         Price__c?: number
         Final_Price__c?: number
+        Eligible_for_Subsidies__c?: string
+        Subsidies__c?: number
         Status__c?: string
         Number_of_Bedrooms__c?: number
         Number_of_Bathrooms__c?: number
@@ -1547,6 +1556,8 @@ export async function getUnit(id: string) {
           externalId: undefined,
           price: r.Price__c || 0,
           finalPrice: r.Final_Price__c || undefined,
+          eligibleForSubsidies: parseEligibleForSubsidies(r.Eligible_for_Subsidies__c),
+          subsidies: r.Subsidies__c ? String(r.Subsidies__c) : undefined,
           status: (r.Status__c as Unit['status']) || 'Available',
           bedrooms: r.Number_of_Bedrooms__c || 0,
           bathrooms: r.Number_of_Bathrooms__c || undefined,

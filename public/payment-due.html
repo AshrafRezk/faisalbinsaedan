@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Due</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #2a3441;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: white;
+      text-align: center;
+      overflow: hidden;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(42, 52, 65, 0.7);
+      z-index: 1;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+      width: 100%;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+    .content {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 40px;
+      border-radius: 24px;
+      max-width: 600px;
+      width: 100%;
+      box-sizing: border-box;
+      animation: fadeUp 0.8s ease-out;
+    }
+    .logo {
+      height: 90px;
+      margin-bottom: 32px;
+      animation: fadeScale 1s ease-out;
+    }
+    .title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0 0 20px 0;
+    }
+    .subtitle {
+      color: #d09b30;
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .desc {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .icon {
+      color: #d09b30;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeScale {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    
+    @media (max-width: 768px) {
+      .title { font-size: 2rem; }
+      .content { padding: 30px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  <div class="container">
+    <img src="/BinSaedanLogo-White.png" alt="Bin Saedan" class="logo">
+    <div class="content">
+      <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+        <path d="M12 9v4"></path>
+        <path d="M12 17h.01"></path>
+      </svg>
+      <h1 class="title">Payment Due</h1>
+      <div class="subtitle">Site is temporarily down and can be relaunched upon settlement or agreement with Partner.</div>
+      <p class="desc">Either a Salesforce payment is due or Partner payment is due. Please check with finance for more details.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -54,7 +54,9 @@ export default defineConfig({
         dir: 'rtl'
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,pdf}'],
+        // Do not SPA-fallback PDF/doc paths — otherwise iframe previews load index.html
+        navigateFallbackDenylist: [/^\/docs\//, /\.pdf$/i, /^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,

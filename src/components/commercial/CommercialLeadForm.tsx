@@ -55,15 +55,41 @@ const getSchema = (t: (key: string) => string) =>
 
 type FormData = z.infer<ReturnType<typeof getSchema>>
 
+export type CommercialLeadFormProps = {
+  /** `inline` = standalone page. `dialog` = register-interest modal. */
+  mode?: 'inline' | 'dialog'
+  /** When mode is `dialog`, pass open state so projects load only while open */
+  active?: boolean
+  projectId?: string
+  projectName?: string
+  fallbackProvinceRegion?: string
+  fallbackCity?: string
+  formId?: string
+  onCancel?: () => void
+  onDialogFlowComplete?: () => void
+}
+
 function parseOptionalNumber(value?: string): number | undefined {
   if (!value?.trim()) return undefined
   const n = Number(value)
   return Number.isFinite(n) ? n : undefined
 }
 
-export default function CommercialLeadForm() {
+export default function CommercialLeadForm({
+  mode = 'inline',
+  active = true,
+  projectId: lockedProjectId,
+  projectName,
+  fallbackProvinceRegion,
+  fallbackCity,
+  formId,
+  onCancel,
+  onDialogFlowComplete,
+}: CommercialLeadFormProps) {
   const { t, i18n } = useTranslation()
   const isAr = i18n.language.startsWith('ar')
+  const isInline = mode === 'inline'
+  const projectLocked = Boolean(lockedProjectId)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -84,7 +110,7 @@ export default function CommercialLeadForm() {
       email: '',
       countryCode: DEFAULT_LEAD_COUNTRY_CODE,
       phone: '',
-      projectId: '',
+      projectId: lockedProjectId || '',
       rentalBudget: '',
       numberOfRooms: '',
       rentalStartDate: '',
@@ -95,18 +121,33 @@ export default function CommercialLeadForm() {
   })
 
   useEffect(() => {
+    if (projectLocked || !active) return
+    let cancelled = false
     async function loadProjects() {
       try {
-        const response = await getProjects()
-        if (response.success && response.data) {
+        const response = await getProjects({ projectType: 'Commercial' })
+        if (!cancelled && response.success && response.data) {
           setProjects(response.data)
         }
       } catch (err) {
         console.error('Error loading projects for commercial form:', err)
       }
     }
-    loadProjects()
-  }, [])
+    void loadProjects()
+    return () => {
+      cancelled = true
+    }
+  }, [projectLocked, active])
+
+  useEffect(() => {
+    if (lockedProjectId) {
+      reset((prev) => ({ ...prev, projectId: lockedProjectId }))
+    }
+  }, [lockedProjectId, reset])
+
+  const lockedProject = projectLocked
+    ? projects.find((p) => p.id === lockedProjectId) ?? null
+    : null
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
@@ -117,12 +158,17 @@ export default function CommercialLeadForm() {
       const firstName = parts[0] || ''
       const lastName = parts.slice(1).join(' ') || firstName
 
-      const selectedProject = projects.find((p) => p.id === data.projectId)
-      const projectLabel = selectedProject
-        ? isAr
-          ? selectedProject.nameAr || selectedProject.name
-          : selectedProject.name
-        : ''
+      const effectiveProjectId = lockedProjectId || data.projectId
+      const selectedProject = effectiveProjectId
+        ? projects.find((p) => p.id === effectiveProjectId)
+        : undefined
+      const projectLabel =
+        projectName ||
+        (selectedProject
+          ? isAr
+            ? selectedProject.nameAr || selectedProject.name
+            : selectedProject.name
+          : '')
 
       const meta = [
         'Lead Type: Commercial/Rental',
@@ -143,11 +189,12 @@ export default function CommercialLeadForm() {
         company: data.companyName || undefined,
         message,
         unitType: 'Rental',
-        region: selectedProject?.provinceRegion || undefined,
-        city: selectedProject?.city || undefined,
+        region:
+          selectedProject?.provinceRegion || fallbackProvinceRegion || undefined,
+        city: selectedProject?.city || fallbackCity || undefined,
         interestedProjectName: projectLabel || undefined,
-        interestedProjectId: data.projectId || undefined,
-        rentalProjectId: data.projectId || undefined,
+        interestedProjectId: effectiveProjectId || undefined,
+        rentalProjectId: effectiveProjectId || undefined,
         rentalBudget: parseOptionalNumber(data.rentalBudget),
         numberOfRooms: parseOptionalNumber(data.numberOfRooms),
         rentalStartDate: data.rentalStartDate || undefined,
@@ -156,7 +203,23 @@ export default function CommercialLeadForm() {
 
       if (response.success) {
         setIsSuccess(true)
-        reset()
+        reset({
+          name: '',
+          companyName: '',
+          email: '',
+          countryCode: DEFAULT_LEAD_COUNTRY_CODE,
+          phone: '',
+          projectId: lockedProjectId || '',
+          rentalBudget: '',
+          numberOfRooms: '',
+          rentalStartDate: '',
+          rentalEndDate: '',
+          propertyType: '',
+          message: '',
+        })
+        if (!isInline) {
+          onDialogFlowComplete?.()
+        }
         setTimeout(() => setIsSuccess(false), 5000)
       } else {
         setError(friendlyLeadErrorMessage(response.error, t('contact.errorOccurred')))
@@ -183,7 +246,13 @@ export default function CommercialLeadForm() {
   }
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate dir={isAr ? 'rtl' : 'ltr'}>
+    <Box
+      component="form"
+      id={formId}
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      dir={isAr ? 'rtl' : 'ltr'}
+    >
       <Grid
         container
         spacing={2}
@@ -264,28 +333,49 @@ export default function CommercialLeadForm() {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Controller
-            name="projectId"
-            control={control}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!errors.projectId}>
-                <InputLabel>{t('commercial.project')}</InputLabel>
-                <Select label={t('commercial.project')} {...field} value={field.value || ''}>
-                  <MenuItem value="">{t('search.options.allProjects')}</MenuItem>
-                  {projects.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {isAr ? p.nameAr || p.name : p.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText sx={{ visibility: 'hidden', m: 0 }} aria-hidden>
-                  .
-                </FormHelperText>
-              </FormControl>
-            )}
-          />
-        </Grid>
+        {!projectLocked && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Controller
+              name="projectId"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.projectId}>
+                  <InputLabel>{t('commercial.project')}</InputLabel>
+                  <Select label={t('commercial.project')} {...field} value={field.value || ''}>
+                    <MenuItem value="">{t('search.options.allProjects')}</MenuItem>
+                    {projects.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {isAr ? p.nameAr || p.name : p.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText sx={{ visibility: 'hidden', m: 0 }} aria-hidden>
+                    .
+                  </FormHelperText>
+                </FormControl>
+              )}
+            />
+          </Grid>
+        )}
+
+        {projectLocked && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <input type="hidden" {...register('projectId')} />
+            <TextField
+              label={t('commercial.project')}
+              value={
+                projectName ||
+                (lockedProject
+                  ? isAr
+                    ? lockedProject.nameAr || lockedProject.name
+                    : lockedProject.name
+                  : t('contact.notSpecified'))
+              }
+              disabled
+              fullWidth
+            />
+          </Grid>
+        )}
 
         <Grid size={{ xs: 12, sm: 6 }}>
           <Controller
@@ -379,17 +469,30 @@ export default function CommercialLeadForm() {
         </Alert>
       )}
 
-      <Button
-        type="submit"
-        variant="contained"
-        size="large"
-        fullWidth
-        disabled={isSubmitting}
-        startIcon={<Send size={20} />}
-        sx={{ mt: 3, py: 1.5, borderRadius: 2 }}
-      >
-        {isSubmitting ? t('contact.submitting') : t('contact.send')}
-      </Button>
+      {isInline && (
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          fullWidth
+          disabled={isSubmitting}
+          startIcon={<Send size={20} />}
+          sx={{ mt: 3, py: 1.5, borderRadius: 2 }}
+        >
+          {isSubmitting ? t('contact.submitting') : t('contact.send')}
+        </Button>
+      )}
+
+      {!isInline && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 2, flexWrap: 'wrap' }}>
+          <Button type="button" variant="outlined" onClick={onCancel} disabled={isSubmitting}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting} startIcon={<Send size={20} />}>
+            {isSubmitting ? t('contact.submitting') : t('contact.send')}
+          </Button>
+        </Box>
+      )}
     </Box>
   )
 }

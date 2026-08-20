@@ -25,7 +25,7 @@ const EMPTY_VALUES: SearchFilterFormValues = {
   unitType: '',
   minPrice: '',
   maxPrice: '',
-  supportAvailable: '',
+  supportAvailable: 'yes',
 }
 
 export default function FilterDrawer() {

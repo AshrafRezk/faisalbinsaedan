@@ -32,8 +32,11 @@ import {
 import type { ProjectMapUnit } from '../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000
 
 async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS)
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       headers: {
@@ -42,6 +45,7 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       },
       credentials: 'include',
       ...options,
+      signal: options?.signal ?? controller.signal,
     })
 
     // Check if response is JSON
@@ -69,6 +73,8 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       success: false,
       error: 'Network error or endpoint not available',
     }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -1947,7 +1953,7 @@ export async function getOfficeLocations(): Promise<OfficeLocationRecord[]> {
           coords,
           dirUrl: coords
             ? `https://www.google.com/maps/dir/?api=1&destination=${coords}`
-            : url,
+            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.Name)}`,
         }
       })
   } catch (error) {

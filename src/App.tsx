@@ -14,7 +14,6 @@ const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
 const Login = lazy(() => import('./pages/Login'))
 const Community = lazy(() => import('./pages/Community'))
 const Contact = lazy(() => import('./pages/Contact'))
-const CommercialRental = lazy(() => import('./pages/CommercialRental'))
 const Offline = lazy(() => import('./pages/Offline'))
 const ComingSoon = lazy(() => import('./pages/ComingSoon'))
 const AboutUs = lazy(() => import('./pages/AboutUs'))
@@ -45,59 +44,54 @@ function MaintenanceGate({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { setAuth, clearAuth, setLoading } = useAuthStore()
-  const { setFeatures, getFeature, isReady } = useFeatureSwitchStore()
+  const { setFeatures, getFeature } = useFeatureSwitchStore()
 
   useEffect(() => {
     let mounted = true
-    async function hydrate() {
-      setLoading(true)
-      
+
+    async function refreshFeatureSwitches() {
       try {
-        // Run auth and feature switches fetches in parallel to cut load time in half
-        const [authResult, featureResult] = await Promise.allSettled([
-          getCurrentUser(),
-          getFeatureSwitchesOnLoad()
-        ]);
+        const featureRes = await getFeatureSwitchesOnLoad()
+        if (!mounted) return
+        if (featureRes?.payload?.data?.values) {
+          setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || [])
+        }
+      } catch (err) {
+        console.error('[Feature Switches] Failed to load feature switches', err)
+      }
+    }
 
-        if (!mounted) return;
+    void refreshFeatureSwitches()
+    return () => {
+      mounted = false
+    }
+  }, [setFeatures])
 
-        // Handle Auth
-        if (authResult.status === 'fulfilled') {
-          const res = authResult.value;
-          if (res.success && res.data) {
-            setAuth(res.data, null)
-          } else {
-            clearAuth()
-          }
+  useEffect(() => {
+    let mounted = true
+
+    async function hydrateAuth() {
+      setLoading(true)
+      try {
+        const res = await getCurrentUser()
+        if (!mounted) return
+        if (res.success && res.data) {
+          setAuth(res.data, null)
         } else {
           clearAuth()
         }
-
-        // Handle Feature Switches
-        if (featureResult.status === 'fulfilled') {
-          const featureRes = featureResult.value;
-          if (featureRes?.payload?.data?.values) {
-            setFeatures(featureRes.payload.data.values, featureRes.payload.data.fields || []);
-          } else {
-            setFeatures({}, []);
-          }
-        } else {
-          console.error('[Feature Switches] Failed to load feature switches', featureResult.reason);
-          setFeatures({}, []); // Ensure app loads even if feature switches fail
-        }
-
-      } catch (err) {
-        console.error('[Hydration Error] Unexpected error during hydration', err);
-        if (mounted) setFeatures({}, []);
+      } catch {
+        if (mounted) clearAuth()
       } finally {
         if (mounted) setLoading(false)
       }
     }
-    hydrate()
+
+    void hydrateAuth()
     return () => {
       mounted = false
     }
-  }, [setAuth, clearAuth, setLoading, setFeatures])
+  }, [setAuth, clearAuth, setLoading])
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -111,14 +105,6 @@ function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
-
-  if (!isReady) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Suspense fallback={
@@ -135,7 +121,7 @@ function App() {
               <Route path="project/:id" element={<ProjectDetails />} />
               <Route path="unit/:id" element={<UnitDetails />} />
               {getFeature('Show_Support_Page__c', true) && <Route path="contact" element={<Contact />} />}
-              <Route path="commercial-rental" element={<CommercialRental />} />
+              <Route path="commercial-rental" element={<Navigate to="/latest-releases" replace />} />
               <Route path="residential-projects" element={<ResidentialProjects />} />
               {getFeature('Show_About_Us_Page__c', true) && <Route path="about-us" element={<AboutUs />} />}
               {getFeature('Show_Our_Achievements_Page__c', true) && <Route path="achievements" element={<Achievements />} />}

@@ -2,6 +2,7 @@ import { Dialog, DialogTitle, DialogContent, Button, Box, Typography } from '@mu
 import { Close } from '@mui/icons-material'
 import { useTranslation } from 'react-i18next'
 import LeadInterestForm from './LeadInterestForm'
+import CommercialLeadForm from '../commercial/CommercialLeadForm'
 
 interface RegisterInterestModalProps {
   isOpen: boolean
@@ -13,6 +14,8 @@ interface RegisterInterestModalProps {
   projectName?: string
   fallbackProvinceRegion?: string
   fallbackCity?: string
+  /** Commercial project pages use the rental interest form instead of the general lead form */
+  isCommercial?: boolean
 }
 
 export default function RegisterInterestModal({
@@ -25,6 +28,7 @@ export default function RegisterInterestModal({
   projectName,
   fallbackProvinceRegion,
   fallbackCity,
+  isCommercial = false,
 }: RegisterInterestModalProps) {
   const { t } = useTranslation()
 
@@ -32,15 +36,23 @@ export default function RegisterInterestModal({
     onClose()
   }
 
+  const formTitle = isCommercial ? t('commercial.formTitle') : t('contact.formTitle')
+  const formSubtitle = isCommercial ? t('commercial.formCta') : undefined
+
   return (
     <Dialog open={isOpen} onClose={handleClose} maxWidth="md" fullWidth scroll="paper">
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
           <Box>
-            <Typography variant="h6">{t('contact.formTitle')}</Typography>
+            <Typography variant="h6">{formTitle}</Typography>
             {projectName && (
               <Typography variant="body2" color="text.secondary">
                 {projectName}
+              </Typography>
+            )}
+            {formSubtitle && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {formSubtitle}
               </Typography>
             )}
           </Box>
@@ -51,19 +63,33 @@ export default function RegisterInterestModal({
       </DialogTitle>
 
       <DialogContent dividers>
-        <LeadInterestForm
-          mode="dialog"
-          active={isOpen}
-          projectId={projectId}
-          phaseId={phaseId}
-          unitId={unitId}
-          unitNumber={unitNumber}
-          projectName={projectName}
-          fallbackProvinceRegion={fallbackProvinceRegion}
-          fallbackCity={fallbackCity}
-          onCancel={handleClose}
-          onDialogFlowComplete={onClose}
-        />
+        {isCommercial ? (
+          <CommercialLeadForm
+            mode="dialog"
+            active={isOpen}
+            projectId={projectId}
+            projectName={projectName}
+            fallbackProvinceRegion={fallbackProvinceRegion}
+            fallbackCity={fallbackCity}
+            onCancel={handleClose}
+            onDialogFlowComplete={onClose}
+          />
+        ) : (
+          <LeadInterestForm
+            mode="dialog"
+            active={isOpen}
+            projectId={projectId}
+            phaseId={phaseId}
+            unitId={unitId}
+            unitNumber={unitNumber}
+            projectName={projectName}
+            fallbackProvinceRegion={fallbackProvinceRegion}
+            fallbackCity={fallbackCity}
+            allowedProfiles={['Individual']}
+            onCancel={handleClose}
+            onDialogFlowComplete={onClose}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

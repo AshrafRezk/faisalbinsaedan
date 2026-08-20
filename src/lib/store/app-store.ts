@@ -32,6 +32,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 const MAINTENANCE_PASSWORD = "binsaedan2025";
 
+/** Default unit search filters — Support Available = Yes */
+export const DEFAULT_UNIT_FILTERS: UnitFilters = {
+  eligibleForSubsidies: true,
+};
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -45,7 +50,7 @@ export const useAppStore = create<AppState>()(
       dismissInstallBanner: () => set({ showInstallBanner: false }),
 
       // Search Filters
-      filters: {},
+      filters: { ...DEFAULT_UNIT_FILTERS },
       setFilters: (filtersOrUpdater) =>
         set((state) => ({
           filters:
@@ -53,7 +58,7 @@ export const useAppStore = create<AppState>()(
               ? filtersOrUpdater(state.filters)
               : filtersOrUpdater,
         })),
-      clearFilters: () => set({ filters: {} }),
+      clearFilters: () => set({ filters: { ...DEFAULT_UNIT_FILTERS } }),
 
       // UI State
       isFilterDrawerOpen: false,

@@ -37,6 +37,8 @@ const log = (...args: unknown[]) => {
   if (import.meta.env.DEV) console.log('[LeadInterestForm]', ...args)
 }
 
+export type LeadProfile = 'Investor' | 'Individual' | 'Supplier'
+
 export type LeadInterestFormProps = {
   /** `inline` = Contact page (always visible). `dialog` = modal (fetch when `active`). */
   mode: 'inline' | 'dialog'
@@ -56,6 +58,11 @@ export type LeadInterestFormProps = {
   onCancel?: () => void
   /** Called after success so the dialog can close (only used with `dialog` mode) */
   onDialogFlowComplete?: () => void
+  /**
+   * Which profile tabs to show. Contact keeps all three; residential register-interest
+   * uses Individual only (no Supplier / Investor).
+   */
+  allowedProfiles?: LeadProfile[]
 }
 
 type FormData = z.infer<ReturnType<typeof getSchema>>
@@ -161,9 +168,9 @@ const getSchema = (t: (key: string) => string) =>
       }
     })
 
-function buildEmptyDefaults(projectId?: string): FormData {
+function buildEmptyDefaults(projectId?: string, defaultProfile: LeadProfile = 'Investor'): FormData {
   return {
-    profile: 'Investor',
+    profile: defaultProfile,
     name: '',
     email: '',
     countryCode: DEFAULT_LEAD_COUNTRY_CODE,
@@ -183,6 +190,8 @@ function buildEmptyDefaults(projectId?: string): FormData {
   }
 }
 
+const ALL_PROFILES: LeadProfile[] = ['Investor', 'Individual', 'Supplier']
+
 export default function LeadInterestForm({
   mode,
   active = true,
@@ -196,9 +205,15 @@ export default function LeadInterestForm({
   formId = 'lead-interest-form',
   onCancel,
   onDialogFlowComplete,
+  allowedProfiles = ALL_PROFILES,
 }: LeadInterestFormProps) {
   const { t, i18n } = useTranslation()
   const isAr = i18n.language.startsWith('ar')
+  const profiles = allowedProfiles.length > 0 ? allowedProfiles : ALL_PROFILES
+  const showProfileSelector = profiles.length > 1
+  const defaultProfile: LeadProfile = profiles.includes('Individual')
+    ? 'Individual'
+    : profiles[0] ?? 'Individual'
   const uid = useId()
   const regionLabelId = `${uid}-region`
   const cityLabelId = `${uid}-city`
@@ -229,7 +244,7 @@ export default function LeadInterestForm({
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(getSchema(t)),
-    defaultValues: buildEmptyDefaults(projectId),
+    defaultValues: buildEmptyDefaults(projectId, defaultProfile),
   })
 
   const regionWatch = watch('region')
@@ -335,15 +350,15 @@ export default function LeadInterestForm({
       log('reset: skip (dialog closed)')
       return
     }
-    log('reset: run', { mode, active, projectId, unitId, defaults: buildEmptyDefaults(projectId) })
-    reset(buildEmptyDefaults(projectId))
+    log('reset: run', { mode, active, projectId, unitId, defaults: buildEmptyDefaults(projectId, defaultProfile) })
+    reset(buildEmptyDefaults(projectId, defaultProfile))
     setError(null)
     setIsSuccess(false)
     setCommercialRegistrationPdf(null)
     setVatCertificatePdf(null)
     setCommercialRegistrationPdfError(null)
     setVatCertificatePdfError(null)
-  }, [active, projectId, reset, mode, unitId])
+  }, [active, projectId, reset, mode, unitId, defaultProfile])
 
   // When project is pre-selected (e.g. unit page), fill region & city from project list or unit fallbacks
   useEffect(() => {
@@ -452,7 +467,7 @@ export default function LeadInterestForm({
         unitNumber ? `Unit: ${unitNumber}` : null,
         unitId && !unitNumber ? `Unit ID: ${unitId}` : null,
         data.profile === 'Supplier' && data.companyType ? `Company Type: ${data.companyType}` : null,
-        data.profile === 'Supplier' && data.companyNumber ? `Company Number: ${data.companyNumber}` : null,
+        data.profile === 'Supplier' && data.companyNumber ? `Company Phone Number: ${data.companyNumber}` : null,
         data.profile === 'Supplier' && data.employeePosition ? `Position: ${data.employeePosition}` : null,
         data.profile === 'Investor' && data.investmentType?.trim()
           ? `Investment Type: ${data.investmentType.trim()}`
@@ -494,7 +509,7 @@ export default function LeadInterestForm({
         setIsSuccess(true)
         setCommercialRegistrationPdf(null)
         setVatCertificatePdf(null)
-        reset(buildEmptyDefaults(projectId))
+        reset(buildEmptyDefaults(projectId, defaultProfile))
         if (isInline) {
           setTimeout(() => setIsSuccess(false), 5000)
         } else {
@@ -528,87 +543,117 @@ export default function LeadInterestForm({
   }
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      <Grid container spacing={2} sx={{ mt: 0 }}>
-        <Grid size={{ xs: 12 }}>
-          <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-            {t('contact.profileQuestion')}
-          </Typography>
-          <Controller
-            name="profile"
-            control={control}
-            render={({ field }) => (
-              <ToggleButtonGroup
-                exclusive
-                value={field.value}
-                onChange={(_, next) => {
-                  if (!next) return
-                  field.onChange(next)
-                  if (next !== 'Supplier') {
-                    setCommercialRegistrationPdf(null)
-                    setVatCertificatePdf(null)
-                    setCommercialRegistrationPdfError(null)
-                    setVatCertificatePdfError(null)
-                    setValue('commercialRegistrationNumber', '')
-                    setValue('taxRegistrationNumber', '')
-                    setValue('nationalAddress', '')
-                    setValue('companyName', '')
-                    setValue('companyNumber', '')
-                    setValue('companyType', '')
-                    setValue('employeePosition', '')
-                  }
-                  if (next !== 'Investor') {
-                    setValue('investmentType', '')
-                  }
-                }}
-                fullWidth
-                sx={{
-                  bgcolor: 'background.paper',
-                  border: 1,
-                  borderColor: 'divider',
-                  borderRadius: 999,
-                  overflow: 'hidden',
-                  flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                  '& .MuiToggleButton-root': {
-                    flex: 1,
-                    py: 1.25,
-                    px: { xs: 1, sm: 1.5 },
-                    border: 0,
-                    borderRadius: 0,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: { xs: '0.75rem', sm: '0.8125rem' },
-                    color: 'text.secondary',
-                  },
-                  '& .MuiToggleButton-root.Mui-selected': {
-                    bgcolor: 'action.selected',
-                    color: 'text.primary',
-                  },
-                  '& .MuiToggleButton-root.Mui-selected:hover': {
-                    bgcolor: 'action.selected',
-                  },
-                }}
-                aria-label={t('contact.profileQuestion')}
-              >
-                <ToggleButton value="Investor">{t('contact.profileOptions.investor')}</ToggleButton>
-                <ToggleButton value="Individual">{t('contact.profileOptions.individual')}</ToggleButton>
-                <ToggleButton value="Supplier">{t('contact.profileOptions.supplier')}</ToggleButton>
-              </ToggleButtonGroup>
-            )}
-          />
-          {errors.profile?.message && (
-            <Typography variant="caption" color="error" sx={{ mt: 0.75, display: 'block' }}>
-              {errors.profile.message}
+    <form
+      id={formId}
+      onSubmit={handleSubmit(onSubmit)}
+      dir={isAr ? 'rtl' : 'ltr'}
+      noValidate
+      style={{ textAlign: isAr ? 'right' : 'left' }}
+    >
+      <Grid
+        container
+        spacing={2}
+        sx={{
+          mt: 0,
+          ...(isAr
+            ? {
+                '& .MuiInputBase-input': { textAlign: 'right' },
+                '& .MuiSelect-select': { textAlign: 'right' },
+                '& .MuiFormHelperText-root': { textAlign: 'right' },
+                '& .MuiFormLabel-root': { textAlign: 'right' },
+              }
+            : null),
+        }}
+      >
+        {showProfileSelector ? (
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+              {t('contact.profileQuestion')}
             </Typography>
-          )}
-        </Grid>
+            <Controller
+              name="profile"
+              control={control}
+              render={({ field }) => (
+                <ToggleButtonGroup
+                  exclusive
+                  value={field.value}
+                  onChange={(_, next) => {
+                    if (!next) return
+                    field.onChange(next)
+                    if (next !== 'Supplier') {
+                      setCommercialRegistrationPdf(null)
+                      setVatCertificatePdf(null)
+                      setCommercialRegistrationPdfError(null)
+                      setVatCertificatePdfError(null)
+                      setValue('commercialRegistrationNumber', '')
+                      setValue('taxRegistrationNumber', '')
+                      setValue('nationalAddress', '')
+                      setValue('companyName', '')
+                      setValue('companyNumber', '')
+                      setValue('companyType', '')
+                      setValue('employeePosition', '')
+                    }
+                    if (next !== 'Investor') {
+                      setValue('investmentType', '')
+                    }
+                  }}
+                  fullWidth
+                  sx={{
+                    bgcolor: 'background.paper',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 999,
+                    overflow: 'hidden',
+                    flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                    '& .MuiToggleButton-root': {
+                      flex: 1,
+                      py: 1.25,
+                      px: { xs: 1, sm: 1.5 },
+                      border: 0,
+                      borderRadius: 0,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: { xs: '0.75rem', sm: '0.8125rem' },
+                      color: 'text.secondary',
+                    },
+                    '& .MuiToggleButton-root.Mui-selected': {
+                      bgcolor: 'action.selected',
+                      color: 'text.primary',
+                    },
+                    '& .MuiToggleButton-root.Mui-selected:hover': {
+                      bgcolor: 'action.selected',
+                    },
+                  }}
+                  aria-label={t('contact.profileQuestion')}
+                >
+                  {profiles.includes('Investor') && (
+                    <ToggleButton value="Investor">{t('contact.profileOptions.investor')}</ToggleButton>
+                  )}
+                  {profiles.includes('Individual') && (
+                    <ToggleButton value="Individual">{t('contact.profileOptions.individual')}</ToggleButton>
+                  )}
+                  {profiles.includes('Supplier') && (
+                    <ToggleButton value="Supplier">{t('contact.profileOptions.supplier')}</ToggleButton>
+                  )}
+                </ToggleButtonGroup>
+              )}
+            />
+            {errors.profile?.message && (
+              <Typography variant="caption" color="error" sx={{ mt: 0.75, display: 'block' }}>
+                {errors.profile.message}
+              </Typography>
+            )}
+          </Grid>
+        ) : (
+          <input type="hidden" {...register('profile')} />
+        )}
         <Grid size={{ xs: 12 }}>
           <TextField
             {...register('name')}
             label={isSupplier ? t('contact.employeeName') : t('contact.name')}
             placeholder={t('contact.namePlaceholder')}
             fullWidth
-            required={isSupplier}
+            required={isSupplier || isInvestor}
             error={!!errors.name}
             helperText={errors.name?.message}
           />
@@ -665,6 +710,7 @@ export default function LeadInterestForm({
               <TextField
                 {...register('companyNumber')}
                 label={t('contact.companyNumber')}
+                type="tel"
                 fullWidth
                 required
                 inputProps={{ maxLength: 20 }}
@@ -731,19 +777,23 @@ export default function LeadInterestForm({
             </Grid>
             {SUPPLIER_GUIDE_PDF_URL ? (
               <Grid size={{ xs: 12 }}>
-                <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-                  {t('contact.supplierGuidePdf')}
-                </Typography>
                 <Link
                   href={SUPPLIER_GUIDE_PDF_URL}
                   download="شروط-وسياسة-تسجيل-المورد.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="hover"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontWeight: 600, mb: 1 }}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    fontWeight: 600,
+                    mb: 1,
+                    direction: isAr ? 'rtl' : 'ltr',
+                  }}
                 >
                   <FileDown size={18} />
-                  {t('contact.supplierGuidePdfDownload')}
+                  {t('contact.supplierGuidePdf')}
                 </Link>
                 <SupplierPdfPreview
                   url={SUPPLIER_GUIDE_PDF_URL}

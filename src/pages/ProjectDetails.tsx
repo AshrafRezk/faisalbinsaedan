@@ -831,6 +831,7 @@ export default function ProjectDetails() {
         projectName={title}
         fallbackProvinceRegion={project.provinceRegion}
         fallbackCity={project.city}
+        isCommercial={isCommercialProject}
       />
 
       <FinanceCalculatorModal

@@ -40,12 +40,11 @@ export default function Header() {
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
     { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
-    { path: '/commercial-rental', label: navLabel('commercial', t('common.commercial')) },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Commercial Projects')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]
 
   const moreNavItems = [
-    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Commercial Projects')) },
     { path: '/community', label: navLabel('community', t('common.community')) },
     { path: '/contact', label: navLabel('support', t('common.support', 'Support')) },
   ]

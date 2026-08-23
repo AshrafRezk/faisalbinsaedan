@@ -25,13 +25,13 @@ import { createLead, getProjects } from '../../lib/api-client'
 import { salesforceIdsEqual } from '../../lib/salesforceIds'
 import { friendlyLeadErrorMessage } from '../../lib/salesforce/friendlyError'
 import { SUPPLIER_GUIDE_PDF_URL } from '../../lib/contact'
+
 import {
   DEFAULT_LEAD_COUNTRY_CODE,
   LEAD_COUNTRY_CODES,
   countryCodeLabel,
 } from '../../lib/leadCountryCodes'
 import type { Project } from '../../lib/types'
-import SupplierPdfPreview from './SupplierPdfPreview'
 
 const log = (...args: unknown[]) => {
   if (import.meta.env.DEV) console.log('[LeadInterestForm]', ...args)
@@ -453,13 +453,21 @@ export default function LeadInterestForm({
       const parts = data.name.trim().split(/\s+/).filter(Boolean)
       const firstName = parts[0] || ''
       const lastName = parts.slice(1).join(' ') || firstName
-      const effectiveProjectId = projectLocked ? projectId! : data.project || undefined
+      const effectiveProjectId =
+        data.profile === 'Investor' && !projectLocked
+          ? undefined
+          : projectLocked
+            ? projectId!
+            : data.project || undefined
       const selectedProject = effectiveProjectId ? projects.find((p) => p.id === effectiveProjectId) : undefined
-      const projectLabel = selectedProject
-        ? i18n.language.startsWith('ar')
-          ? selectedProject.nameAr || selectedProject.name
-          : selectedProject.name
-        : projectName || ''
+      const projectLabel =
+        data.profile === 'Investor' && !projectLocked
+          ? ''
+          : selectedProject
+            ? i18n.language.startsWith('ar')
+              ? selectedProject.nameAr || selectedProject.name
+              : selectedProject.name
+            : projectName || ''
       const meta = [
         data.region ? `Region: ${data.region}` : null,
         data.city ? `City: ${data.city}` : null,
@@ -595,6 +603,8 @@ export default function LeadInterestForm({
                     }
                     if (next !== 'Investor') {
                       setValue('investmentType', '')
+                    } else {
+                      setValue('project', '')
                     }
                   }}
                   fullWidth
@@ -795,10 +805,6 @@ export default function LeadInterestForm({
                   <FileDown size={18} />
                   {t('contact.supplierGuidePdf')}
                 </Link>
-                <SupplierPdfPreview
-                  url={SUPPLIER_GUIDE_PDF_URL}
-                  title={t('contact.supplierGuidePdf')}
-                />
               </Grid>
             ) : null}
             <Grid size={{ xs: 12 }}>
@@ -995,6 +1001,7 @@ export default function LeadInterestForm({
             />
           )}
         </Grid>
+        {!isInvestor && (
         <Grid size={{ xs: 12 }}>
           {projectLocked ? (
             <>
@@ -1044,6 +1051,7 @@ export default function LeadInterestForm({
             />
           )}
         </Grid>
+        )}
         <Grid size={{ xs: 12 }}>
           <TextField
             {...register('message')}

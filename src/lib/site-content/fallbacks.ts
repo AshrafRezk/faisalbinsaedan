@@ -3,17 +3,17 @@ import type { NavLabelKey, SiteContent } from './types'
 const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   home: { en: 'Home', ar: 'الرئيسية' },
   search: { en: 'Search', ar: 'البحث' },
-  aboutUs: { en: 'About Us', ar: 'من نحن' },
-  achievements: { en: 'Our Achievements', ar: 'إنجازاتنا' },
-  community: { en: 'My Community', ar: 'مجتمعي' },
-  contact: { en: 'Contact Us', ar: 'تواصل معنا' },
+  aboutUs: { en: 'About', ar: 'من نحن' },
+  achievements: { en: 'Achievements', ar: 'إنجازاتنا' },
+  community: { en: 'Community', ar: 'مجتمعي' },
+  contact: { en: 'Contact', ar: 'تواصل معنا' },
   support: { en: 'Support', ar: 'الدعم' },
-  latestReleases: { en: 'Commercial Projects', ar: 'المشاريع التجارية' },
+  latestReleases: { en: 'Commercial', ar: 'المشاريع التجارية' },
   ourNews: { en: 'Blogs', ar: 'المدوّنة' },
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },
   commercial: { en: 'Commercial & Rental', ar: 'التجاري والتأجير' },
-  residentialProjects: { en: 'Residential Projects', ar: 'المشاريع السكنية' },
+  residentialProjects: { en: 'Residential', ar: 'المشاريع السكنية' },
   residentialUnits: { en: 'Residential Units', ar: 'الوحدات السكنية' },
 }
 

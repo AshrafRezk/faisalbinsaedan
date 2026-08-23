@@ -40,7 +40,8 @@ export default function Header() {
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
     { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
-    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases', 'Commercial Projects')) },
+    // EN nav: short "Commercial"; AR keeps CMS/i18n (المشاريع التجارية)
+    { path: '/latest-releases', label: isRtl ? navLabel('latestReleases', t('common.latestReleases')) : t('common.latestReleases', 'Commercial') },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]
 
@@ -80,7 +81,17 @@ export default function Header() {
           </Link>
         </Box>
 
-        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: { md: 2, lg: 4 }, alignItems: 'center', justifyContent: 'center', flexGrow: 1, mx: { md: 2, lg: 4 } }}>
+        <Box
+          sx={{
+            display: { xs: 'none', md: 'flex' },
+            gap: isRtl ? { md: 2, lg: 4 } : { md: 1.25, lg: 2.25 },
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexGrow: 1,
+            mx: isRtl ? { md: 2, lg: 4 } : { md: 1, lg: 2 },
+            minWidth: 0,
+          }}
+        >
           {mainNavItems.map((item) => {
             const active = isNavPathActive(location.pathname, location.search, item.path)
             return (
@@ -91,10 +102,13 @@ export default function Header() {
                 sx={{
                   color: 'primary.main',
                   fontWeight: 600,
-                  fontSize: '0.875rem',
+                  fontSize: isRtl ? '0.875rem' : { md: '0.75rem', lg: '0.8125rem' },
+                  letterSpacing: isRtl ? undefined : '0.04em',
+                  whiteSpace: 'nowrap',
                   textDecoration: 'none',
                   textTransform: 'uppercase',
                   position: 'relative',
+                  flexShrink: 0,
                   '&:after': active ? {
                     content: '""',
                     position: 'absolute',
@@ -122,9 +136,12 @@ export default function Header() {
               gap: 0.5,
               color: 'primary.main',
               fontWeight: 600,
-              fontSize: '0.875rem',
+              fontSize: isRtl ? '0.875rem' : { md: '0.75rem', lg: '0.8125rem' },
+              letterSpacing: isRtl ? undefined : '0.04em',
+              whiteSpace: 'nowrap',
               cursor: 'pointer',
               textTransform: 'uppercase',
+              flexShrink: 0,
               '&:hover': { opacity: 0.8 },
             }}
           >

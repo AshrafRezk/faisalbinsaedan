@@ -44,6 +44,9 @@ export interface SalesforceUnitDTO {
   finishing: string;
   usageType: string;
   unitType?: string;
+  leasingStatus?: string;
+  expectedRentalValue?: number;
+  rentalUnitType?: string;
   view: string;
   hasGarden: boolean;
   hasLand: boolean;
@@ -61,6 +64,9 @@ export interface SalesforceUnitDTO {
     city: string;
     province: string;
     projectType?: string;
+    projectCode?: string;
+    projectAddress?: string;
+    projectAddressAr?: string;
   };
   phase?: {
     id: string;

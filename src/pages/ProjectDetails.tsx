@@ -167,6 +167,13 @@ export default function ProjectDetails() {
     if (project.projectType?.trim()) {
       items.push({ label: t('project.projectType'), value: project.projectType.trim() })
     }
+    if (project.projectCode?.trim()) {
+      items.push({ label: t('unit.projectCode'), value: project.projectCode.trim() })
+    }
+    const address = (isAr ? project.projectAddressAr || project.projectAddress : project.projectAddress || project.projectAddressAr)?.trim()
+    if (address) {
+      items.push({ label: t('unit.projectAddress'), value: address })
+    }
     if (typeof project.projectValue === 'number' && project.projectValue > 0) {
       items.push({
         label: t('project.projectValue'),

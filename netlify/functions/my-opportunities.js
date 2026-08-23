@@ -203,6 +203,8 @@ export const handler = async (event) => {
     const contractFields = [
       'Id',
       'Name',
+      'Status__c',
+      'CreatedDate',
       'Project__c',
       'Unit__c',
       'Unit_Price__c',
@@ -213,6 +215,7 @@ export const handler = async (event) => {
       'Block__c',
       'Phase__c',
       'Payment_Method__c',
+      'Opportunity__c',
       'Opportunity__r.Unit__c',
     ].join(', ')
 
@@ -227,6 +230,80 @@ export const handler = async (event) => {
     const contracts = contractRes.records || []
     console.log(`[my-opportunities] Found ${contracts.length} contracts for account ${accountId}`)
 
+    const contractIds = contracts.map((c) => pickId(c.Id)).filter(Boolean)
+    const opportunityIds = contracts.map((c) => pickId(c.Opportunity__c)).filter(Boolean)
+
+    // 2b) Installments for these contracts / account
+    let installmentRecords = []
+    if (contractIds.length > 0 || opportunityIds.length > 0) {
+      const installmentFields = [
+        'Id',
+        'Name',
+        'Installment_Type__c',
+        'Installment_Status__c',
+        'Installment_Amount__c',
+        'Installment_Percentage__c',
+        'Due_Date__c',
+        'Contract__c',
+        'Opportunity__c',
+        'Unit__c',
+        'Payment_Plan__c',
+      ].join(', ')
+
+      const installmentFilters = [`Account__c = '${accountId}'`]
+      if (contractIds.length > 0) {
+        installmentFilters.push(`Contract__c IN (${contractIds.map((id) => `'${id}'`).join(', ')})`)
+      }
+      if (opportunityIds.length > 0) {
+        installmentFilters.push(`Opportunity__c IN (${opportunityIds.map((id) => `'${id}'`).join(', ')})`)
+      }
+
+      const installmentSoql = `SELECT ${installmentFields}
+        FROM Installment__c
+        WHERE ${installmentFilters.join(' OR ')}
+        ORDER BY Due_Date__c ASC NULLS LAST, CreatedDate ASC
+        LIMIT 200`
+
+      console.log('[my-opportunities] Fetching installments...')
+      try {
+        const installmentRes = await sfQuery(instanceUrl, accessToken, installmentSoql)
+        installmentRecords = installmentRes.records || []
+        console.log(`[my-opportunities] Found ${installmentRecords.length} installments`)
+      } catch (installmentError) {
+        console.error('[my-opportunities] Installment query failed:', installmentError)
+      }
+    }
+
+    const mapInstallment = (row) => ({
+      id: pickId(row.Id),
+      name: String(row.Name || '').trim(),
+      type: row.Installment_Type__c || null,
+      status: row.Installment_Status__c || null,
+      amount: row.Installment_Amount__c != null ? Number(row.Installment_Amount__c) : null,
+      percentage: row.Installment_Percentage__c != null ? Number(row.Installment_Percentage__c) : null,
+      dueDate: row.Due_Date__c || null,
+      contractId: pickId(row.Contract__c) || null,
+      opportunityId: pickId(row.Opportunity__c) || null,
+      unitLabel: pickLabel(row.Unit__c) || null,
+      paymentPlan: pickLabel(row.Payment_Plan__c) || null,
+    })
+
+    const installmentsByContractId = new Map()
+    const installmentsByOpportunityId = new Map()
+    for (const row of installmentRecords) {
+      const mapped = mapInstallment(row)
+      if (mapped.contractId) {
+        const list = installmentsByContractId.get(mapped.contractId) || []
+        list.push(mapped)
+        installmentsByContractId.set(mapped.contractId, list)
+      }
+      if (mapped.opportunityId) {
+        const list = installmentsByOpportunityId.get(mapped.opportunityId) || []
+        list.push(mapped)
+        installmentsByOpportunityId.set(mapped.opportunityId, list)
+      }
+    }
+
     const unitIds = contracts
       .map((c) => pickId(c.Opportunity__r?.Unit__c) || pickId(c.Unit__c))
       .filter(Boolean)
@@ -239,6 +316,8 @@ export const handler = async (event) => {
 
     // 3) Map Contract__c to standard Opportunity/Unit structures expected by the frontend
     const mappedOpportunities = contracts.map((c) => {
+      const contractId = pickId(c.Id)
+      const opportunityId = pickId(c.Opportunity__c)
       const oppUnitId = pickId(c.Opportunity__r?.Unit__c)
       const unitFieldValue = oppUnitId || c.Unit__c
       const unit = resolveUnitFromField(unitFieldValue, unitsById)
@@ -253,6 +332,19 @@ export const handler = async (event) => {
       const project = projectFromLookup
         ? { id: oppProjectId, name: projectFromLookup.name || oppProjectName, heroImageUrl: projectFromLookup.heroImageUrl }
         : resolveProjectFromField(c.Project__c, projectsById)
+
+      const fromContract = installmentsByContractId.get(contractId) || []
+      const fromOpportunity = opportunityId
+        ? (installmentsByOpportunityId.get(opportunityId) || []).filter(
+            (inst) => !inst.contractId || inst.contractId === contractId
+          )
+        : []
+      const seen = new Set()
+      const installments = [...fromContract, ...fromOpportunity].filter((inst) => {
+        if (!inst.id || seen.has(inst.id)) return false
+        seen.add(inst.id)
+        return true
+      })
 
       const mappedUnit = {
         id: unit.id || c.Id,
@@ -290,12 +382,18 @@ export const handler = async (event) => {
       }
 
       return {
-        id: c.Id,
+        id: contractId,
         name: project.name || oppProjectName || 'Unit Contract',
         stageName: `${c.Name}`, // contract number (as displayed in screenshot)
-        closeDate: null,
+        closeDate: c.CreatedDate || null,
         amount: Number(c.Unit_Final_Price__c || c.Unit_Price__c || 0),
+        contractNumber: c.Name || null,
+        contractStatus: c.Status__c || null,
+        paymentMethod: c.Payment_Method__c || null,
+        paymentProgress: Number(c.Unit_Cumulative_Progress_Percentage__c || 0),
+        unitNumber: unit.label || pickLabel(c.Unit__c) || null,
         units: [mappedUnit],
+        installments,
       }
     })
 

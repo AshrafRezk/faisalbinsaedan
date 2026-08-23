@@ -44,6 +44,12 @@ export interface Project {
   completionYear?: number;
   /** Salesforce Project_Value__c */
   projectValue?: number;
+  /** Salesforce Project_Code__c */
+  projectCode?: string;
+  /** Salesforce Project_Address__c */
+  projectAddress?: string;
+  /** Salesforce Project_Address_Ar__c */
+  projectAddressAr?: string;
   phases: Phase[];
 }
 
@@ -140,6 +146,12 @@ export interface Unit {
   usageType?: string;
   /** Salesforce Unit_Type__c — Villa | Townhouse | Apartment */
   unitType?: string;
+  /** Salesforce Leasing_Status__c — commercial leasing status */
+  leasingStatus?: string;
+  /** Salesforce Expected_Rental_Value__c */
+  expectedRentalValue?: number;
+  /** Salesforce Rental_Unit_Type__c — Office | Retail | … */
+  rentalUnitType?: string;
   view?: string;
   hasGarden?: boolean;
   hasLand?: boolean;
@@ -164,6 +176,11 @@ export interface Unit {
   projectNameAr?: string;
   /** Derived from parent project Project_Type__c — e.g. Residential, Commercial */
   propertyType?: string;
+  /** Salesforce Project_Code__c */
+  projectCode?: string;
+  /** Salesforce Project_Address__c / Project_Address_Ar__c */
+  projectAddress?: string;
+  projectAddressAr?: string;
   /** From `Project__r` on unit query — used when lead form can’t match `getProjects()` */
   projectProvinceRegion?: string;
   projectCity?: string;

@@ -13,7 +13,7 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { ArrowRight, Bed, Bath, Maximize, Check } from 'lucide-react'
+import { ArrowRight, Bed, Bath, Maximize, Check, Building2, MapPin, Tag, Banknote } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import UnitCard from '../components/search/UnitCard'
@@ -28,6 +28,7 @@ import { useAuthStore, useFeatureSwitchStore } from '../lib/store'
 import { Unit, ProjectModelFile } from '../lib/types'
 import { getUnitDisplayPrice } from '../lib/unitPrice'
 import UnitPriceDisplay from '../components/units/UnitPriceDisplay'
+import CurrencyIcon from '../components/ui/CurrencyIcon'
 import ProjectModelViewer from '../components/project/ProjectModelViewer'
 import ProjectBrochureViewer from '../components/project/ProjectBrochureViewer'
 import SubsidyBadges from '../components/units/SubsidyBadges'
@@ -103,6 +104,26 @@ export default function UnitDetails() {
     Reserved: 'محجوز',
     Sold: 'مباع',
   }
+
+  const isCommercialUnit =
+    (unit.propertyType || '').toLowerCase() === 'commercial' ||
+    (unit.usageType || '').toLowerCase() === 'commercial' ||
+    (unit.usageType || '').toLowerCase() === 'rental' ||
+    Boolean(unit.leasingStatus || unit.expectedRentalValue || unit.rentalUnitType)
+
+  const locale = i18n.language === 'ar' ? 'ar-SA' : 'en-US'
+  const formatMoney = (amount: number) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(amount)
+  const leasingStatusLabel = unit.leasingStatus
+    ? t(`unit.leasingStatusValues.${unit.leasingStatus}`, { defaultValue: unit.leasingStatus })
+    : ''
+  const rentalUnitTypeLabel = unit.rentalUnitType
+    ? t(`unit.rentalUnitTypeValues.${unit.rentalUnitType}`, { defaultValue: unit.rentalUnitType })
+    : ''
+  const projectAddress =
+    (i18n.language.startsWith('ar')
+      ? unit.projectAddressAr || unit.projectAddress
+      : unit.projectAddress || unit.projectAddressAr) || ''
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'transparent' }}>
@@ -258,31 +279,89 @@ export default function UnitDetails() {
               })}
             >
               <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <Box
-                      sx={{
-                        textAlign: 'center',
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: 'grey.50',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          bgcolor: 'grey.100',
-                          transform: 'translateY(-2px)',
+                {isCommercialUnit ? (
+                  <Grid container spacing={3}>
+                    {(
+                      [
+                        {
+                          icon: Tag,
+                          label: t('unit.leasingStatus'),
+                          value: leasingStatusLabel || '—',
                         },
-                      }}
-                    >
-                      <Bed size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                        {t('unit.bedroomsLabel')}
-                      </Typography>
-                      <Typography variant="h5" fontWeight="bold" color="primary.main">
-                        {unit.bedrooms}
-                      </Typography>
-                    </Box>
+                        {
+                          icon: Banknote,
+                          label: t('unit.expectedRentalValue'),
+                          value:
+                            unit.expectedRentalValue != null ? (
+                              <Box
+                                component="span"
+                                sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                {formatMoney(unit.expectedRentalValue)}
+                                <CurrencyIcon className="mx-1" />
+                              </Box>
+                            ) : (
+                              '—'
+                            ),
+                        },
+                        {
+                          icon: Maximize,
+                          label: t('unit.areaLabel'),
+                          value: `${unit.area || 0} ${t('unit.areaUnit')}`,
+                        },
+                        {
+                          icon: Building2,
+                          label: t('unit.rentalUnitType'),
+                          value: rentalUnitTypeLabel || '—',
+                        },
+                        {
+                          icon: Tag,
+                          label: t('unit.projectCode'),
+                          value: unit.projectCode || '—',
+                        },
+                        {
+                          icon: MapPin,
+                          label: t('unit.projectAddress'),
+                          value: projectAddress || '—',
+                        },
+                      ] as const
+                    ).map((item) => {
+                      const SpecIcon = item.icon
+                      return (
+                        <Grid key={item.label} size={{ xs: 6, md: 4 }}>
+                          <Box
+                            sx={{
+                              textAlign: 'center',
+                              p: 2,
+                              borderRadius: 2,
+                              bgcolor: 'grey.50',
+                              height: '100%',
+                              transition: 'all 0.2s',
+                              '&:hover': {
+                                bgcolor: 'grey.100',
+                                transform: 'translateY(-2px)',
+                              },
+                            }}
+                          >
+                            <SpecIcon size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                              {item.label}
+                            </Typography>
+                            <Typography
+                              variant="h6"
+                              fontWeight="bold"
+                              color="primary.main"
+                              sx={{ wordBreak: 'break-word' }}
+                            >
+                              {item.value}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      )
+                    })}
                   </Grid>
-                  {unit.bathrooms && (
+                ) : (
+                  <Grid container spacing={3}>
                     <Grid size={{ xs: 6, md: 3 }}>
                       <Box
                         sx={{
@@ -297,40 +376,65 @@ export default function UnitDetails() {
                           },
                         }}
                       >
-                        <Bath size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
+                        <Bed size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
                         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                          {t('unit.bathroomsLabel')}
+                          {t('unit.bedroomsLabel')}
                         </Typography>
                         <Typography variant="h5" fontWeight="bold" color="primary.main">
-                          {unit.bathrooms}
+                          {unit.bedrooms}
                         </Typography>
                       </Box>
                     </Grid>
-                  )}
-                  <Grid size={{ xs: 6, md: 3 }}>
-                    <Box
-                      sx={{
-                        textAlign: 'center',
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: 'grey.50',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          bgcolor: 'grey.100',
-                          transform: 'translateY(-2px)',
-                        },
-                      }}
-                    >
-                      <Maximize size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                        {t('unit.areaLabel')}
-                      </Typography>
-                      <Typography variant="h5" fontWeight="bold" color="primary.main">
-                        {unit.area} {t('unit.areaUnit')}
-                      </Typography>
-                    </Box>
+                    {unit.bathrooms && (
+                      <Grid size={{ xs: 6, md: 3 }}>
+                        <Box
+                          sx={{
+                            textAlign: 'center',
+                            p: 2,
+                            borderRadius: 2,
+                            bgcolor: 'grey.50',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'grey.100',
+                              transform: 'translateY(-2px)',
+                            },
+                          }}
+                        >
+                          <Bath size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            {t('unit.bathroomsLabel')}
+                          </Typography>
+                          <Typography variant="h5" fontWeight="bold" color="primary.main">
+                            {unit.bathrooms}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+                    <Grid size={{ xs: 6, md: 3 }}>
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor: 'grey.50',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: 'grey.100',
+                            transform: 'translateY(-2px)',
+                          },
+                        }}
+                      >
+                        <Maximize size={28} color="#1a365d" style={{ margin: '0 auto 12px', display: 'block' }} />
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                          {t('unit.areaLabel')}
+                        </Typography>
+                        <Typography variant="h5" fontWeight="bold" color="primary.main">
+                          {unit.area} {t('unit.areaUnit')}
+                        </Typography>
+                      </Box>
+                    </Grid>
                   </Grid>
-                </Grid>
+                )}
               </CardContent>
             </Card>
 
@@ -578,6 +682,7 @@ export default function UnitDetails() {
         projectName={unit.projectNameAr || unit.projectName}
         fallbackProvinceRegion={unit.projectProvinceRegion}
         fallbackCity={unit.projectCity}
+        isCommercial={isCommercialUnit}
       />
 
       <FinanceCalculatorModal

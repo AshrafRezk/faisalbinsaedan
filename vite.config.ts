@@ -5,12 +5,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    host: 'localhost',
+    // Bind all IPv4 interfaces so Netlify Dev can reach Vite whether it uses
+    // 127.0.0.1 or localhost→IPv4 (see scripts/netlify-dev.sh dns-result-order).
+    // host: 'localhost' often listens on ::1 only, which makes :8888 hang.
+    host: '0.0.0.0',
     port: 5173,
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8888',
+        target: 'http://127.0.0.1:8888',
         changeOrigin: true,
       },
     },

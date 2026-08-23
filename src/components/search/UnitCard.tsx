@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent, Chip, Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
-import { Bed, Bath, Maximize } from 'lucide-react'
+import { Bed, Bath, Maximize, Tag } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Unit } from '../../lib/types'
 import FavoriteButton from '../ui/FavoriteButton'
@@ -77,6 +77,15 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
             size="small"
           />
         )}
+        {unit.leasingStatus && (
+          <Chip
+            label={t(`unit.leasingStatusValues.${unit.leasingStatus}`, {
+              defaultValue: unit.leasingStatus,
+            })}
+            color="secondary"
+            size="small"
+          />
+        )}
         <Chip
           label={statusLabels[unit.status]}
           color={statusColors[unit.status]}
@@ -134,25 +143,48 @@ export default function UnitCard({ unit, index = 0, variant = 'grid' }: UnitCard
         {i18n.language.startsWith('ar') ? unit.phaseNameAr : unit.phaseName}
       </Typography>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.75rem', color: 'text.secondary', mt: isList ? 'auto' : 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Bed size={16} />
-          <Typography variant="caption">
-            {unit.bedrooms} {t('unit.bedrooms')}
-          </Typography>
-        </Box>
-        {unit.bathrooms && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Bath size={16} />
-            <Typography variant="caption">{unit.bathrooms}</Typography>
-          </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.75rem', color: 'text.secondary', mt: isList ? 'auto' : 0, flexWrap: 'wrap' }}>
+        {isCommercial ? (
+          <>
+            {unit.rentalUnitType && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Tag size={16} />
+                <Typography variant="caption">
+                  {t(`unit.rentalUnitTypeValues.${unit.rentalUnitType}`, {
+                    defaultValue: unit.rentalUnitType,
+                  })}
+                </Typography>
+              </Box>
+            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Maximize size={16} />
+              <Typography variant="caption">
+                {unit.area} {t('unit.areaUnit')}
+              </Typography>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Bed size={16} />
+              <Typography variant="caption">
+                {unit.bedrooms} {t('unit.bedrooms')}
+              </Typography>
+            </Box>
+            {unit.bathrooms && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Bath size={16} />
+                <Typography variant="caption">{unit.bathrooms}</Typography>
+              </Box>
+            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Maximize size={16} />
+              <Typography variant="caption">
+                {unit.area} {t('unit.areaUnit')}
+              </Typography>
+            </Box>
+          </>
         )}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Maximize size={16} />
-          <Typography variant="caption">
-            {unit.area} {t('unit.areaUnit')}
-          </Typography>
-        </Box>
       </Box>
     </CardContent>
   )

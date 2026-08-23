@@ -1825,6 +1825,17 @@ export type MyInstallment = {
   paymentPlan?: string | null
 }
 
+export type MyContractAttachment = {
+  id: string
+  contentDocumentId?: string
+  title: string
+  fileExtension?: string | null
+  fileType?: string | null
+  size?: number | null
+  filename?: string
+  url: string
+}
+
 export type MyOpportunity = {
   id: string
   name: string
@@ -1838,6 +1849,7 @@ export type MyOpportunity = {
   unitNumber?: string | null
   units: Unit[]
   installments?: MyInstallment[]
+  attachments?: MyContractAttachment[]
 }
 
 export async function getMyOpportunities() {

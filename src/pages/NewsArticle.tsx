@@ -26,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { getNewsArticle, getNewsArticles } from '../lib/api-client'
 import { NewsArticle as NewsArticleType } from '../lib/types'
+import { newsBody, newsExcerpt, newsMetaDescription, newsTitle } from '../lib/newsLocale'
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'
@@ -93,11 +94,12 @@ export default function NewsArticle() {
   }, [id])
 
   const pubDate = article?.publicationDate ? new Date(article.publicationDate) : null
+  const displayTitle = article ? newsTitle(article, isRtl) : ''
   const contentHtml =
-    article?.body ||
-    (article as { Body__c?: string; content?: string; Content__c?: string })?.Body__c ||
-    (article as { content?: string })?.content ||
-    (article as { Content__c?: string })?.Content__c ||
+    (article ? newsBody(article, isRtl) : '') ||
+    (article as { Body__c?: string; content?: string; Content__c?: string } | null)?.Body__c ||
+    (article as { content?: string } | null)?.content ||
+    (article as { Content__c?: string } | null)?.Content__c ||
     ''
 
   const calculateReadingTime = (text: string) => {
@@ -110,7 +112,7 @@ export default function NewsArticle() {
   const handleShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: article?.title || '', url: window.location.href })
+        await navigator.share({ title: displayTitle || '', url: window.location.href })
       } catch {
         /* user cancelled */
       }
@@ -161,8 +163,8 @@ export default function NewsArticle() {
 
   const category = (article.segment || t('news.badge', 'Blog')).toUpperCase()
   const excerpt =
-    article.excerpt ||
-    article.metaDescription ||
+    newsExcerpt(article, isRtl) ||
+    newsMetaDescription(article, isRtl) ||
     contentHtml.replace(/<[^>]*>?/gm, '').slice(0, 180)
 
   return (
@@ -232,7 +234,7 @@ export default function NewsArticle() {
               mb: 2,
             }}
           >
-            {article.title}
+            {displayTitle}
           </Typography>
 
           {excerpt && (
@@ -300,7 +302,7 @@ export default function NewsArticle() {
               <Box
                 component="img"
                 src={article.coverImageUrl || FALLBACK_IMAGE}
-                alt={article.title}
+                alt={displayTitle}
                 sx={{
                   width: '100%',
                   maxHeight: { xs: 260, md: 420 },
@@ -448,7 +450,9 @@ export default function NewsArticle() {
                     {t('news.relatedPosts', 'Related Posts')}
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {relatedPosts.map((post) => (
+                    {relatedPosts.map((post) => {
+                      const relatedTitle = newsTitle(post, isRtl)
+                      return (
                       <Box
                         key={post.id}
                         component={Link}
@@ -464,7 +468,7 @@ export default function NewsArticle() {
                         <Box
                           component="img"
                           src={post.coverImageUrl || FALLBACK_IMAGE}
-                          alt={post.title}
+                          alt={relatedTitle}
                           sx={{
                             width: 72,
                             height: 72,
@@ -486,10 +490,11 @@ export default function NewsArticle() {
                             overflow: 'hidden',
                           }}
                         >
-                          {post.title}
+                          {relatedTitle}
                         </Typography>
                       </Box>
-                    ))}
+                      )
+                    })}
                   </Box>
                 </Paper>
               )}

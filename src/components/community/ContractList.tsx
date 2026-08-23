@@ -1,10 +1,10 @@
-import { Box, Card, CardContent, Chip, LinearProgress, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, Chip, LinearProgress, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
-import { FileSignature, Building2 } from 'lucide-react'
+import { FileSignature, Building2, Download, FileText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import CurrencyIcon from '../ui/CurrencyIcon'
-import type { MyOpportunity } from '../../lib/api-client'
+import type { MyContractAttachment, MyOpportunity } from '../../lib/api-client'
 
 function formatAmount(amount: number, locale: string) {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(amount)
@@ -17,6 +17,17 @@ function statusColor(status?: string | null): 'default' | 'info' | 'success' | '
   if (s.includes('draft')) return 'default'
   if (s.includes('bank') || s.includes('verif') || s.includes('pending') || s.includes('sent')) return 'warning'
   return 'info'
+}
+
+function downloadAttachment(file: MyContractAttachment) {
+  const anchor = document.createElement('a')
+  anchor.href = file.url
+  anchor.download = file.filename || file.title || 'contract'
+  anchor.rel = 'noopener'
+  anchor.target = '_blank'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
 }
 
 export default function ContractList({ contracts }: { contracts: MyOpportunity[] }) {
@@ -45,6 +56,8 @@ export default function ContractList({ contracts }: { contracts: MyOpportunity[]
         const paidCount = (contract.installments || []).filter(
           (i) => String(i.status || '').toLowerCase() === 'paid'
         ).length
+        const attachments = contract.attachments || []
+        const primaryAttachment = attachments[0]
 
         return (
           <motion.div
@@ -128,7 +141,7 @@ export default function ContractList({ contracts }: { contracts: MyOpportunity[]
                   </Box>
                 </Box>
 
-                <Box>
+                <Box sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                     <Typography variant="caption" color="text.secondary" fontWeight={600}>
                       {t('community.paymentPlan')}
@@ -142,6 +155,85 @@ export default function ContractList({ contracts }: { contracts: MyOpportunity[]
                     value={Math.min(100, Math.max(0, progress))}
                     sx={{ height: 8, borderRadius: 4 }}
                   />
+                </Box>
+
+                <Box
+                  sx={{
+                    pt: 2,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.25,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Typography variant="body2" fontWeight={700} color="text.secondary">
+                      {t('community.contractDocuments')}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!primaryAttachment}
+                      startIcon={<Download size={16} />}
+                      onClick={() => primaryAttachment && downloadAttachment(primaryAttachment)}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        borderRadius: 2,
+                        px: 2,
+                      }}
+                    >
+                      {t('community.downloadContract')}
+                    </Button>
+                  </Box>
+
+                  {attachments.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary">
+                      {t('community.noContractDocuments')}
+                    </Typography>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      {attachments.map((file) => (
+                        <Box
+                          key={file.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                            px: 1.25,
+                            py: 1,
+                            borderRadius: 2,
+                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                            <FileText size={16} color="#1a365d" />
+                            <Typography variant="body2" fontWeight={600} noWrap>
+                              {file.filename || file.title}
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            onClick={() => downloadAttachment(file)}
+                            startIcon={<Download size={14} />}
+                            sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                          >
+                            {t('community.download')}
+                          </Button>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </Box>
               </CardContent>
             </Card>

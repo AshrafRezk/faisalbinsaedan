@@ -15,14 +15,17 @@ import {
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { motion } from 'framer-motion'
-import { Search as SearchIcon, ArrowRight, ArrowLeft, CalendarDays, Newspaper } from 'lucide-react'
+import { Search as SearchIcon, ArrowRight, ArrowLeft, CalendarDays, Newspaper, Instagram } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getNewsArticles } from '../lib/api-client'
 import { NewsArticle } from '../lib/types'
+import { newsExcerpt, newsTitle } from '../lib/newsLocale'
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'
+
+const INSTAGRAM_URL = 'https://www.instagram.com/faisalsaedanco'
 
 const CATEGORIES = ['Residential', 'Commercial', 'Investment']
 
@@ -48,6 +51,8 @@ function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
   const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
   const dateParts = pubDate ? formatDateParts(pubDate, isRtl) : null
   const ReadMoreArrow = isRtl ? ArrowLeft : ArrowRight
+  const title = newsTitle(article, isRtl)
+  const excerpt = newsExcerpt(article, isRtl)
 
   return (
     <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
@@ -91,7 +96,7 @@ function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
             <Box
               component="img"
               src={article.coverImageUrl || FALLBACK_IMAGE}
-              alt={article.title}
+              alt={title}
               sx={{
                 width: '100%',
                 height: '100%',
@@ -158,7 +163,7 @@ function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
                 '&:hover': { color: 'primary.main' },
               }}
             >
-              {article.title}
+              {title}
             </Typography>
 
             {dateParts && (
@@ -168,7 +173,7 @@ function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
               </Box>
             )}
 
-            {article.excerpt && (
+            {excerpt && (
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -181,7 +186,7 @@ function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
                   overflow: 'hidden',
                 }}
               >
-                {article.excerpt}
+                {excerpt}
               </Typography>
             )}
 
@@ -362,6 +367,7 @@ export default function News() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {recent.map((article) => {
               const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
+              const title = newsTitle(article, isRtl)
               return (
                 <Box
                   key={article.id}
@@ -379,7 +385,7 @@ export default function News() {
                   <Box
                     component="img"
                     src={article.coverImageUrl || FALLBACK_IMAGE}
-                    alt={article.title}
+                    alt={title}
                     sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
                   />
                   <Box sx={{ textAlign: align, minWidth: 0 }}>
@@ -396,7 +402,7 @@ export default function News() {
                         overflow: 'hidden',
                       }}
                     >
-                      {article.title}
+                      {title}
                     </Typography>
                     {pubDate && (
                       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -410,6 +416,53 @@ export default function News() {
           </Box>
         </>
       )}
+
+      <Box
+        component="a"
+        href={INSTAGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={(theme) => ({
+          mt: 4,
+          display: 'block',
+          textDecoration: 'none',
+          color: 'inherit',
+          p: 2.5,
+          borderRadius: 3,
+          bgcolor: theme.palette.primary.main,
+          boxShadow: `0 10px 24px ${alpha(theme.palette.primary.main, 0.28)}`,
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: `0 14px 28px ${alpha(theme.palette.primary.main, 0.35)}`,
+          },
+        })}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1, color: 'white' }}>
+          <Instagram size={22} />
+          <Typography fontWeight={800} sx={{ color: 'white' }}>
+            {t('news.ourInstagram', 'Our Instagram')}
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 1.75, lineHeight: 1.5 }}>
+          {t('news.instagramCta', 'Follow @faisalsaedanco for the latest updates and stories.')}
+        </Typography>
+        <Box
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            px: 1.75,
+            py: 0.75,
+            borderRadius: 2,
+            bgcolor: 'rgba(255,255,255,0.95)',
+            color: 'primary.main',
+            fontWeight: 800,
+            fontSize: '0.8125rem',
+          }}
+        >
+          {t('news.instagramFollow', 'Follow us')}
+        </Box>
+      </Box>
     </Paper>
   )
 

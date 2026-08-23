@@ -331,15 +331,20 @@ export interface ApiResponse<T> {
 export interface NewsArticle {
   id: string;
   title: string;
+  titleAr?: string;
   slug?: string;
   publicationDate?: string;
   segment?: string;
   coverImageUrl?: string;
   excerpt?: string;
+  excerptAr?: string;
   metaTitle?: string;
+  metaTitleAr?: string;
   metaDescription?: string;
+  metaDescriptionAr?: string;
   lastModified?: string;
   body?: string;
+  bodyAr?: string;
 }
 
 export interface NewsFilters {

@@ -139,6 +139,67 @@ async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
   return map
 }
 
+/** Latest Files (ContentVersion) linked to Contract__c records. */
+async function fetchAttachmentsByContractIds(instanceUrl, accessToken, contractIds) {
+  const unique = [...new Set(contractIds.filter(Boolean))]
+  const byContract = new Map()
+  for (const id of unique) byContract.set(id, [])
+  if (unique.length === 0) return byContract
+
+  const idList = unique.map((id) => `'${id}'`).join(', ')
+  try {
+    const linksSoql = `SELECT ContentDocumentId, LinkedEntityId
+      FROM ContentDocumentLink
+      WHERE LinkedEntityId IN (${idList})`
+    const linksRes = await sfQuery(instanceUrl, accessToken, linksSoql)
+    const links = linksRes.records || []
+    if (links.length === 0) return byContract
+
+    const docIds = [...new Set(links.map((l) => pickId(l.ContentDocumentId)).filter(Boolean))]
+    if (docIds.length === 0) return byContract
+
+    const docList = docIds.map((id) => `'${id}'`).join(', ')
+    const versionsSoql = `SELECT Id, Title, FileExtension, FileType, ContentDocumentId, ContentSize, CreatedDate
+      FROM ContentVersion
+      WHERE IsLatest = true AND ContentDocumentId IN (${docList})
+      ORDER BY CreatedDate DESC`
+    const versionsRes = await sfQuery(instanceUrl, accessToken, versionsSoql)
+    const versionByDoc = new Map()
+    for (const v of versionsRes.records || []) {
+      const docId = pickId(v.ContentDocumentId)
+      if (docId && !versionByDoc.has(docId)) versionByDoc.set(docId, v)
+    }
+
+    for (const link of links) {
+      const contractId = pickId(link.LinkedEntityId)
+      const docId = pickId(link.ContentDocumentId)
+      const version = docId ? versionByDoc.get(docId) : null
+      if (!contractId || !version) continue
+      const versionId = pickId(version.Id)
+      if (!versionId) continue
+      const title = String(version.Title || 'Contract').trim() || 'Contract'
+      const ext = String(version.FileExtension || '').trim().toLowerCase()
+      const filename = ext && !title.toLowerCase().endsWith(`.${ext}`) ? `${title}.${ext}` : title
+      const list = byContract.get(contractId) || []
+      list.push({
+        id: versionId,
+        contentDocumentId: docId,
+        title,
+        fileExtension: ext || null,
+        fileType: version.FileType || null,
+        size: version.ContentSize != null ? Number(version.ContentSize) : null,
+        filename,
+        url: `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}&filename=${encodeURIComponent(filename)}`,
+      })
+      byContract.set(contractId, list)
+    }
+  } catch (error) {
+    console.error('[my-opportunities] Contract attachments query failed:', error)
+  }
+
+  return byContract
+}
+
 function projectFromUnitRecord(unitRecord) {
   const phase = unitRecord?.Building__r?.Block__r?.Phase__r
   return {
@@ -313,6 +374,11 @@ export const handler = async (event) => {
       ...contracts.map((c) => pickId(c.Project__c)),
     ].filter(Boolean)
     const projectsById = await fetchProjectsByIds(instanceUrl, accessToken, projectIds)
+    const attachmentsByContractId = await fetchAttachmentsByContractIds(
+      instanceUrl,
+      accessToken,
+      contractIds
+    )
 
     // 3) Map Contract__c to standard Opportunity/Unit structures expected by the frontend
     const mappedOpportunities = contracts.map((c) => {
@@ -394,6 +460,7 @@ export const handler = async (event) => {
         unitNumber: unit.label || pickLabel(c.Unit__c) || null,
         units: [mappedUnit],
         installments,
+        attachments: attachmentsByContractId.get(contractId) || [],
       }
     })
 

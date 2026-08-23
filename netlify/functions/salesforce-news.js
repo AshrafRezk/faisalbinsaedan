@@ -160,6 +160,9 @@ export const handler = async (event) => {
                     if (article.body) {
                         article.body = rewriteHtmlSrcs(article.body);
                     }
+                    if (article.bodyAr) {
+                        article.bodyAr = rewriteHtmlSrcs(article.bodyAr);
+                    }
                     return article;
                 });
             } else if (sfData?.data?.article) {
@@ -168,6 +171,9 @@ export const handler = async (event) => {
                 }
                 if (sfData.data.article.body) {
                     sfData.data.article.body = rewriteHtmlSrcs(sfData.data.article.body);
+                }
+                if (sfData.data.article.bodyAr) {
+                    sfData.data.article.bodyAr = rewriteHtmlSrcs(sfData.data.article.bodyAr);
                 }
             }
 

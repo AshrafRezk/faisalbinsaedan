@@ -35,11 +35,16 @@ export default function Header() {
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null)
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState<null | HTMLElement>(null)
 
+  // Shown inline at every desktop width (lg+).
   const mainNavItems = [
     { path: '/', label: navLabel('home', t('common.home')) },
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
     { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
+  ]
+
+  // Shown inline only at xl; folded into the More menu below xl to keep the row from overflowing.
+  const xlNavItems = [
     { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]
@@ -74,7 +79,7 @@ export default function Header() {
       className="safe-top"
     >
       <Toolbar sx={{ justifyContent: 'space-between', minHeight: '64px !important', px: { xs: 2, md: 4, lg: 6 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
             <BrandLogo variant="header" />
           </Link>
@@ -82,13 +87,15 @@ export default function Header() {
 
         <Box
           sx={{
-            display: { xs: 'none', md: 'flex' },
-            gap: isRtl ? { md: 2, lg: 4 } : { md: 1.25, lg: 2.25 },
+            display: { xs: 'none', lg: 'flex' },
+            gap: isRtl ? { lg: 4 } : { lg: 2.25 },
             alignItems: 'center',
             justifyContent: 'center',
             flexGrow: 1,
-            mx: isRtl ? { md: 2, lg: 4 } : { md: 1, lg: 2 },
+            flexShrink: 1,
+            mx: isRtl ? { lg: 4 } : { lg: 2 },
             minWidth: 0,
+            overflow: 'hidden',
           }}
         >
           {mainNavItems.map((item) => {
@@ -99,6 +106,43 @@ export default function Header() {
                 component={Link}
                 to={item.path}
                 sx={{
+                  color: 'primary.main',
+                  fontWeight: 600,
+                  fontSize: isRtl ? '0.875rem' : { md: '0.75rem', lg: '0.8125rem' },
+                  letterSpacing: isRtl ? undefined : '0.04em',
+                  whiteSpace: 'nowrap',
+                  textDecoration: 'none',
+                  textTransform: 'uppercase',
+                  position: 'relative',
+                  flexShrink: 0,
+                  '&:after': active ? {
+                    content: '""',
+                    position: 'absolute',
+                    bottom: -4,
+                    left: 0,
+                    width: '100%',
+                    height: 2,
+                    bgcolor: 'primary.main',
+                  } : {},
+                  '&:hover': {
+                    opacity: 0.8,
+                  },
+                }}
+              >
+                {item.label}
+              </Box>
+            )
+          })}
+
+          {xlNavItems.map((item) => {
+            const active = isNavPathActive(location.pathname, location.search, item.path)
+            return (
+              <Box
+                key={item.path}
+                component={Link}
+                to={item.path}
+                sx={{
+                  display: { lg: 'none', xl: 'flex' },
                   color: 'primary.main',
                   fontWeight: 600,
                   fontSize: isRtl ? '0.875rem' : { md: '0.75rem', lg: '0.8125rem' },
@@ -158,6 +202,27 @@ export default function Header() {
               }
             }}
           >
+            {xlNavItems.map((item) => (
+              <MenuItem
+                key={item.path}
+                component={Link}
+                to={item.path}
+                onClick={() => setMoreMenuAnchor(null)}
+                sx={{
+                  display: { xs: 'flex', xl: 'none' },
+                  color: 'primary.main',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  py: 1.5,
+                  ...(isNavPathActive(location.pathname, location.search, item.path) && {
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
+                    fontWeight: 700,
+                  })
+                }}
+              >
+                {item.label}
+              </MenuItem>
+            ))}
             {moreNavItems.map((item) => (
               <MenuItem
                 key={item.path}
@@ -181,7 +246,7 @@ export default function Header() {
           </Menu>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, flexShrink: 0 }}>
           <Button
             variant="outlined"
             size="small"
@@ -196,6 +261,8 @@ export default function Header() {
               textTransform: 'none',
               fontWeight: 600,
               fontSize: '0.8125rem',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               borderColor: (theme) => alpha(theme.palette.primary.main, 0.35),
               color: 'primary.main',
               '&:hover': {
@@ -221,6 +288,8 @@ export default function Header() {
               textTransform: 'none',
               fontWeight: 600,
               fontSize: '0.8125rem',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               borderColor: (theme) => alpha(theme.palette.primary.main, 0.35),
               color: 'primary.main',
               '&:hover': {

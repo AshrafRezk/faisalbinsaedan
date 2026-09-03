@@ -59,7 +59,7 @@ export default function BottomNav() {
         left: 0,
         right: 0,
         zIndex: 1000,
-        display: { xs: 'block', md: 'none' },
+        display: { xs: 'block', lg: 'none' },
         backgroundColor: alpha(theme.palette.background.paper, 0.6),
         backdropFilter: 'blur(16px)',
         borderTop: `1px solid ${alpha(theme.palette.divider, 0.2)}`,

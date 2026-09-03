@@ -1,6 +1,6 @@
-import type { Context } from "@netlify/edge-functions";
-
-export default async (request: Request, context: Context) => {
+// Avoid typed Context import: Netlify's edge bundler can be sensitive to TS
+// type-only imports and may fail to load the function in `netlify dev`.
+export default async (request: Request, context: any) => {
   // Use Deno.env only — Netlify.env.get can hang the local :8888 proxy.
   const isPaymentDue = Deno.env.get("PAYMENT_DUE") === "true";
 

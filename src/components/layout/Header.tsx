@@ -40,8 +40,7 @@ export default function Header() {
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
     { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
-    // EN nav: short "Commercial"; AR keeps CMS/i18n (المشاريع التجارية)
-    { path: '/latest-releases', label: isRtl ? navLabel('latestReleases', t('common.latestReleases')) : t('common.latestReleases', 'Commercial') },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
   ]
 

@@ -180,6 +180,7 @@
     "numberOfRoomsPlaceholder": "مثال: 3",
     "rentalStartDate": "تاريخ بداية الإيجار",
     "rentalEndDate": "تاريخ نهاية الإيجار",
+    "dateFormatPlaceholder": "يوم/شهر/سنة",
     "invalidDateRange": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
     "budget": "الميزانية المتوقعة (سنوياً)",
     "budgetPlaceholder": "اختر نطاق الميزانية",

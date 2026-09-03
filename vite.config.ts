@@ -8,7 +8,9 @@ export default defineConfig({
     // Bind all IPv4 interfaces so Netlify Dev can reach Vite whether it uses
     // 127.0.0.1 or localhost→IPv4 (see scripts/netlify-dev.sh dns-result-order).
     // host: 'localhost' often listens on ::1 only, which makes :8888 hang.
-    host: '0.0.0.0',
+    // Bind on IPv6 so Netlify dev proxy can reach Vite even when it
+    // resolves `localhost` to ::1.
+    host: '::',
     port: 5173,
     strictPort: true,
     proxy: {
@@ -59,7 +61,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,pdf}'],
         // Do not SPA-fallback PDF/doc paths — otherwise iframe previews load index.html
-        navigateFallbackDenylist: [/^\/docs\//, /\.pdf$/i, /^\/api\//],
+        // (You said to ignore PDF routing issues, so we only deny API fallback.)
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,

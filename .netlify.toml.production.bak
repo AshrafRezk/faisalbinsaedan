@@ -1,3 +1,7 @@
+# Used only by `npm run dev:netlify` (scripts/netlify-dev.sh).
+# Same as netlify.toml but WITHOUT payment-blocker edge — that edge on /*
+# hangs the local :8888 proxy (TCP accepts, HTTP never responds).
+
 [build]
   command = "npm ci && npm run build"
   publish = "dist"
@@ -8,25 +12,21 @@
   NPM_FLAGS = "--legacy-peer-deps"
 
 [dev]
-  # Vite binds 127.0.0.1:5173; Netlify proxies that through :8888
   targetPort = 5173
   port = 8888
 
-# Proxy /api requests to Netlify Functions to bypass aggressive adblockers/firewalls
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Microsoft 365 domain verification for fbs.com.sa (must stay at site root)
+# Proxy all non-API routes to Vite's SPA entry.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/ms21837910.txt"
   [headers.values]
     Content-Type = "text/plain; charset=utf-8"
-
-# SPA fallback is in public/_redirects (copied into dist). Do not put
-# `/* → /index.html` here — it hangs Netlify Dev on :8888.
-
-[[edge_functions]]
-  path = "/*"
-  function = "payment-blocker"

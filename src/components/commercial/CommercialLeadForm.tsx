@@ -37,7 +37,6 @@ const getSchema = (t: (key: string) => string) =>
       phone: z.string().min(9, t('registerInterest.phoneInvalid')),
       projectId: z.string().optional(),
       rentalBudget: z.string().optional(),
-      numberOfRooms: z.string().optional(),
       rentalStartDate: z.string().optional(),
       rentalEndDate: z.string().optional(),
       propertyType: z.string().optional(),
@@ -101,6 +100,7 @@ export default function CommercialLeadForm({
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(getSchema(t)),
@@ -112,13 +112,16 @@ export default function CommercialLeadForm({
       phone: '',
       projectId: lockedProjectId || '',
       rentalBudget: '',
-      numberOfRooms: '',
       rentalStartDate: '',
       rentalEndDate: '',
       propertyType: '',
       message: '',
     },
   })
+
+  const rentalStartDate = watch('rentalStartDate')
+  const rentalEndDate = watch('rentalEndDate')
+  const dateFormatPlaceholder = t('commercial.dateFormatPlaceholder')
 
   useEffect(() => {
     if (projectLocked || !active) return
@@ -196,7 +199,6 @@ export default function CommercialLeadForm({
         interestedProjectId: effectiveProjectId || undefined,
         rentalProjectId: effectiveProjectId || undefined,
         rentalBudget: parseOptionalNumber(data.rentalBudget),
-        numberOfRooms: parseOptionalNumber(data.numberOfRooms),
         rentalStartDate: data.rentalStartDate || undefined,
         rentalEndDate: data.rentalEndDate || undefined,
       })
@@ -211,7 +213,6 @@ export default function CommercialLeadForm({
           phone: '',
           projectId: lockedProjectId || '',
           rentalBudget: '',
-          numberOfRooms: '',
           rentalStartDate: '',
           rentalEndDate: '',
           propertyType: '',
@@ -413,40 +414,99 @@ export default function CommercialLeadForm({
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            {...register('numberOfRooms')}
-            label={t('commercial.numberOfRooms')}
-            placeholder={t('commercial.numberOfRoomsPlaceholder')}
-            fullWidth
-            type="number"
-            inputProps={{ min: 0, step: 1 }}
-            error={!!errors.numberOfRooms}
-            helperText={errors.numberOfRooms?.message || ' '}
-          />
+          <Box sx={{ position: 'relative' }}>
+            {!rentalStartDate && (
+              <Box
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  top: 16.5,
+                  // Calendar icon sits on the inline-end side of the date input
+                  insetInlineStart: 14,
+                  insetInlineEnd: 40,
+                  pointerEvents: 'none',
+                  color: 'text.secondary',
+                  fontSize: '1rem',
+                  lineHeight: '1.4375em',
+                  zIndex: 1,
+                  direction: isAr ? 'rtl' : 'ltr',
+                  textAlign: 'start',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {dateFormatPlaceholder}
+              </Box>
+            )}
+            <TextField
+              {...register('rentalStartDate')}
+              label={t('commercial.rentalStartDate')}
+              fullWidth
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.rentalStartDate}
+              helperText={errors.rentalStartDate?.message || ' '}
+              sx={{
+                '& input[type="date"]': {
+                  direction: 'ltr',
+                  // Hide browser locale placeholder (often English or reversed Arabic)
+                  color: rentalStartDate ? 'inherit' : 'transparent',
+                  WebkitTextFillColor: rentalStartDate ? undefined : 'transparent',
+                },
+                '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                  cursor: 'pointer',
+                  opacity: 1,
+                },
+              }}
+            />
+          </Box>
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            {...register('rentalStartDate')}
-            label={t('commercial.rentalStartDate')}
-            fullWidth
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            error={!!errors.rentalStartDate}
-            helperText={errors.rentalStartDate?.message || ' '}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            {...register('rentalEndDate')}
-            label={t('commercial.rentalEndDate')}
-            fullWidth
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            error={!!errors.rentalEndDate}
-            helperText={errors.rentalEndDate?.message || ' '}
-          />
+          <Box sx={{ position: 'relative' }}>
+            {!rentalEndDate && (
+              <Box
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  top: 16.5,
+                  insetInlineStart: 14,
+                  insetInlineEnd: 40,
+                  pointerEvents: 'none',
+                  color: 'text.secondary',
+                  fontSize: '1rem',
+                  lineHeight: '1.4375em',
+                  zIndex: 1,
+                  direction: isAr ? 'rtl' : 'ltr',
+                  textAlign: 'start',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {dateFormatPlaceholder}
+              </Box>
+            )}
+            <TextField
+              {...register('rentalEndDate')}
+              label={t('commercial.rentalEndDate')}
+              fullWidth
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.rentalEndDate}
+              helperText={errors.rentalEndDate?.message || ' '}
+              sx={{
+                '& input[type="date"]': {
+                  direction: 'ltr',
+                  color: rentalEndDate ? 'inherit' : 'transparent',
+                  WebkitTextFillColor: rentalEndDate ? undefined : 'transparent',
+                },
+                '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                  cursor: 'pointer',
+                  opacity: 1,
+                },
+              }}
+            />
+          </Box>
         </Grid>
 
         <Grid size={{ xs: 12 }}>

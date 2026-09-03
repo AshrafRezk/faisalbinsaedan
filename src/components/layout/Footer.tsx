@@ -14,6 +14,7 @@ export default function Footer() {
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')) },
     { path: '/achievements', label: navLabel('achievements', t('common.achievements')) },
     { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')) },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases')) },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')) },
     { path: '/community', label: navLabel('community', t('common.community')) },
     { path: '/contact', label: navLabel('contact', t('common.contact')) },

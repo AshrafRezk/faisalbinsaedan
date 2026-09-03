@@ -8,7 +8,7 @@ const NAV_FALLBACKS: Record<NavLabelKey, { en: string; ar: string }> = {
   community: { en: 'Community', ar: 'مجتمعي' },
   contact: { en: 'Contact', ar: 'تواصل معنا' },
   support: { en: 'Support', ar: 'الدعم' },
-  latestReleases: { en: 'Commercial', ar: 'المشاريع التجارية' },
+  latestReleases: { en: 'Commercial Projects', ar: 'المشاريع التجارية' },
   ourNews: { en: 'Blogs', ar: 'المدوّنة' },
   more: { en: 'More', ar: 'المزيد' },
   call: { en: 'Call', ar: 'اتصال' },

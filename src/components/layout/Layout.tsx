@@ -4,7 +4,6 @@ import Header from './Header'
 import SiteContactBar from './SiteContactBar'
 import Footer from './Footer'
 import BottomNav from './BottomNav'
-import InstallBanner from './InstallBanner'
 import AnimatedBackground from './AnimatedBackground'
 import SaraBot from '../chatbot/SaraBot'
 
@@ -35,7 +34,6 @@ export default function Layout() {
         <Footer />
       </Box>
       <BottomNav />
-      <InstallBanner />
       <SaraBot />
     </div>
   )

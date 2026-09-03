@@ -36,8 +36,39 @@ export function localizedFromRecord(
   }
 }
 
+const PLACEHOLDER_HOSTS = new Set(['your-domain', 'www.your-domain', 'example.com', 'www.example.com'])
+
+/**
+ * Salesforce PWA Content_URL__c is often a CMS placeholder like
+ * `your-domain/projects/malfa/hero.jpg` (no scheme). Browsers treat
+ * `your-domain` as a hostname → net::ERR_NAME_NOT_RESOLVED.
+ */
+export function normalizeContentUrl(raw?: string | null): string {
+  const value = plainText(raw)
+  if (!value) return ''
+
+  const withScheme =
+    /^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('//')
+      ? value.startsWith('//')
+        ? `https:${value}`
+        : value
+      : value.startsWith('/')
+        ? value
+        : `https://${value}`
+
+  if (withScheme.startsWith('/')) return withScheme
+
+  try {
+    const url = new URL(withScheme)
+    if (PLACEHOLDER_HOSTS.has(url.hostname.toLowerCase())) return ''
+    return url.toString()
+  } catch {
+    return value.startsWith('/') ? value : ''
+  }
+}
+
 export function mediaUrl(record?: PWAContentRecord): string {
-  return plainText(record?.Content_URL__c)
+  return normalizeContentUrl(record?.Content_URL__c)
 }
 
 export function parseStatValue(record?: PWAContentRecord): number | undefined {

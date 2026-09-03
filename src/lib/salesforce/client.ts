@@ -31,7 +31,7 @@ export interface SalesforceUnitDTO {
   externalId: string;
   status: string;
   price: number;
-  finalPrice: number;
+  finalPrice?: number;
   currencyCode: string;
   unitImage: string;
   images: string[];
@@ -43,6 +43,10 @@ export interface SalesforceUnitDTO {
   floor: number;
   finishing: string;
   usageType: string;
+  unitType?: string;
+  leasingStatus?: string;
+  expectedRentalValue?: number;
+  rentalUnitType?: string;
   view: string;
   hasGarden: boolean;
   hasLand: boolean;
@@ -60,6 +64,9 @@ export interface SalesforceUnitDTO {
     city: string;
     province: string;
     projectType?: string;
+    projectCode?: string;
+    projectAddress?: string;
+    projectAddressAr?: string;
   };
   phase?: {
     id: string;
@@ -204,16 +211,13 @@ export async function salesforceFetchUnits(filters: Record<string, unknown> = {}
   try {
     const params = new URLSearchParams()
     Object.entries(filters).forEach(([key, value]) => {
-      if (key === 'eligibleForSubsidies') return
       if (value === undefined || value === null || value === '') return
-      if (value === false) return
+      if (typeof value === 'boolean') {
+        params.append(key, value ? 'true' : 'false')
+        return
+      }
       params.append(key, String(value))
     })
-
-    const subsidiesFilter = filters.eligibleForSubsidies
-    if (subsidiesFilter === true || subsidiesFilter === 'true' || subsidiesFilter === 1 || subsidiesFilter === '1') {
-      params.append('eligibleForSubsidies', 'true')
-    }
 
     const query = params.toString() ? `?${params.toString()}` : ''
     const response = await fetch(`/api/salesforce-units${query}`)

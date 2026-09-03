@@ -13,6 +13,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Phone, Mail, MapPin, Clock, Instagram, Linkedin } from 'lucide-react'
 import { getOfficeMapUrl, getOfficeLocations } from '../lib/api-client'
+import { toGoogleMapsEmbedUrl } from '../lib/googleMapsUrls'
 import LeadInterestForm from '../components/home/LeadInterestForm'
 import { useSiteContent } from '../contexts/SiteContentContext'
 
@@ -97,21 +98,19 @@ export default function Contact() {
   const [offices, setOffices] = useState<OfficeLocation[]>([hqOffice])
   const [activeLocation, setActiveLocation] = useState<OfficeLocation>(hqOffice)
 
+  const officeMapFallback = (office: OfficeLocation) => {
+    if (office.coords) {
+      const [lat, lng] = office.coords.split(',').map(Number)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng }
+      }
+    }
+    return { query: office.projectEn || office.project }
+  }
+
   const getEmbedUrl = () => {
-    if (!activeLocation) return ''
-    // A maps.app.goo.gl / place link can't be framed directly (Google blocks it),
-    // so pick the best embeddable source for the selected office:
-    // 1) an actual Google "embed" URL if the admin pasted one,
-    // 2) the project's map centroid coordinates (exact pin),
-    // 3) a search by project name as a last resort so the map still shows something.
-    const url = activeLocation.url || ''
-    if (/google\.[^/]+\/maps\/embed/i.test(url) || /[?&]output=embed/i.test(url)) {
-      return url
-    }
-    if (activeLocation.coords) {
-      return `https://maps.google.com/maps?q=${activeLocation.coords}&t=&z=15&ie=UTF8&iwloc=&output=embed`
-    }
-    return `https://maps.google.com/maps?q=${encodeURIComponent(activeLocation.project)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+    if (!activeLocation) return null
+    return toGoogleMapsEmbedUrl(activeLocation.url, officeMapFallback(activeLocation))
   }
 
   useEffect(() => {
@@ -451,7 +450,7 @@ export default function Contact() {
                   <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'center', bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
                     <Box
                       component="a"
-                      href={activeLocation?.url}
+                      href={activeLocation.dirUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{

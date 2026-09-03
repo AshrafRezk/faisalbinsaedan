@@ -14,6 +14,7 @@ export default async (req) => {
   try {
     const url = new URL(req.url);
     const versionId = url.searchParams.get("versionId");
+    const filenameParam = url.searchParams.get("filename");
     
     if (!versionId) {
       return new Response(JSON.stringify({ error: "versionId is required" }), { status: 400 });
@@ -75,12 +76,19 @@ export default async (req) => {
     }
 
     // Proxy the stream directly to bypass the 6MB limit
+    const contentType = sfResponse.headers.get("content-type") || "application/octet-stream";
+    const headers = {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=300",
+    };
+    if (filenameParam) {
+      const safeName = String(filenameParam).replace(/[\r\n"]/g, "").slice(0, 180) || "download";
+      headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
+    }
+
     return new Response(sfResponse.body, {
       status: 200,
-      headers: {
-        "Content-Type": sfResponse.headers.get("content-type") || "application/octet-stream",
-        "Cache-Control": "public, max-age=300",
-      }
+      headers,
     });
 
   } catch (error) {

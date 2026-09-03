@@ -24,6 +24,16 @@ export default function BottomNav() {
     setAnchorEl(null)
   }
 
+  const isNavItemActive = (itemPath: string) => {
+    const [path, query] = itemPath.split('?')
+    if (query) {
+      const expected = new URLSearchParams(query)
+      const current = new URLSearchParams(location.search)
+      return location.pathname === path && [...expected.entries()].every(([key, value]) => current.get(key) === value)
+    }
+    return currentPath === path
+  }
+
   const visibleItems = [
     { path: '/', label: navLabel('home', t('common.home')), icon: Home },
     { path: '/search', label: navLabel('search', t('common.search')), icon: Search },
@@ -31,13 +41,15 @@ export default function BottomNav() {
   ]
 
   const moreItems = [
+    { path: '/residential-projects', label: navLabel('residentialProjects', t('common.residentialProjects', 'Residential Projects')), icon: Building2 },
+    { path: '/latest-releases', label: navLabel('latestReleases', t('common.latestReleases')), icon: Building2 },
     { path: '/news', label: navLabel('ourNews', t('common.ourNews')), icon: Newspaper },
     { path: '/community', label: navLabel('community', t('common.community')), icon: Building2 },
     { path: '/about-us', label: navLabel('aboutUs', t('common.aboutUs')), icon: Users },
     { path: '/contact', label: navLabel('contact', t('common.contact')), icon: MessageSquare },
   ]
 
-  const isMoreActive = moreItems.some(item => item.path === currentPath)
+  const isMoreActive = moreItems.some((item) => isNavItemActive(item.path))
 
   return (
     <Paper
@@ -47,7 +59,7 @@ export default function BottomNav() {
         left: 0,
         right: 0,
         zIndex: 1000,
-        display: { xs: 'block', md: 'none' },
+        display: { xs: 'block', lg: 'none' },
         backgroundColor: alpha(theme.palette.background.paper, 0.6),
         backdropFilter: 'blur(16px)',
         borderTop: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
@@ -155,7 +167,7 @@ export default function BottomNav() {
         </MenuItem>
         {moreItems.map((item) => {
           const Icon = item.icon
-          const isActive = currentPath === item.path
+          const isActive = isNavItemActive(item.path)
           return (
             <MenuItem
               key={item.path}

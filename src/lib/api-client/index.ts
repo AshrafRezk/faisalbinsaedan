@@ -32,8 +32,11 @@ import {
 import type { ProjectMapUnit } from '../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
+const DEFAULT_FETCH_TIMEOUT_MS = 10_000
 
 async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS)
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       headers: {
@@ -42,6 +45,7 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       },
       credentials: 'include',
       ...options,
+      signal: options?.signal ?? controller.signal,
     })
 
     // Check if response is JSON
@@ -55,6 +59,13 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     }
 
     const data = await response.json()
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data?.error || 'Request failed',
+        status: response.status,
+      }
+    }
     return data
   } catch (error) {
     console.error(`Error fetching ${endpoint}:`, error)
@@ -62,6 +73,8 @@ async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       success: false,
       error: 'Network error or endpoint not available',
     }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -199,6 +212,13 @@ interface SalesforceProjectRecord {
   Project_Location__c?: string
   Project_Summary_English__c?: string
   Project_Summary_Arabic__c?: string
+  Total_Area__c?: number
+  Leasable_Area__c?: number
+  Completion_Year__c?: number
+  Project_Value__c?: number
+  Project_Code__c?: string
+  Project_Address__c?: string
+  Project_Address_Ar__c?: string
 }
 
 interface SalesforceNearbyLocationRecord {
@@ -215,6 +235,15 @@ const SALESFORCE_ID_PATTERN = /^[a-zA-Z0-9]{15,18}$/
 
 function isValidSalesforceId(id: string): boolean {
   return SALESFORCE_ID_PATTERN.test(id)
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return undefined
 }
 
 function mapProjectSummaries(p: SalesforceProjectRecord) {
@@ -702,6 +731,9 @@ interface SalesforceUnitMapRecord {
   Name: string
   Status__c?: string
   Price__c?: number
+  Final_Price__c?: number
+  Eligible_for_Subsidies__c?: string
+  Subsidies__c?: number
   Number_of_Bedrooms__c?: number
   Number_of_Bathrooms__c?: number
   BUA__c?: number
@@ -725,7 +757,7 @@ export async function getProjectMapUnits(projectId: string) {
     return { success: false as const, error: 'Invalid project id' }
   }
 
-  const CACHE_KEY = `binsaedan_project_map_units_v2_${projectId}`
+  const CACHE_KEY = `binsaedan_project_map_units_v4_${projectId}`
   const CACHE_TTL = 5 * 60 * 1000
 
   try {
@@ -741,7 +773,8 @@ export async function getProjectMapUnits(projectId: string) {
   }
 
   try {
-    const soql = `SELECT Id, Name, Status__c, Price__c, Number_of_Bedrooms__c, Number_of_Bathrooms__c, BUA__c,
+    const soql = `SELECT Id, Name, Status__c, Price__c, Final_Price__c, Eligible_for_Subsidies__c, Subsidies__c,
+                  Number_of_Bedrooms__c, Number_of_Bathrooms__c, BUA__c,
                   Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c, Map_Show_On_Map__c,
                   Building__r.Name, Building__r.Block__r.Phase__r.Name
                   FROM Unit__c
@@ -755,6 +788,9 @@ export async function getProjectMapUnits(projectId: string) {
       status: (u.Status__c || '').trim() || 'Unknown',
       statusGroup: normalizeUnitStatusGroup(u.Status__c),
       price: typeof u.Price__c === 'number' ? u.Price__c : undefined,
+      finalPrice: typeof u.Final_Price__c === 'number' ? u.Final_Price__c : undefined,
+      eligibleForSubsidies: parseEligibleForSubsidies(u.Eligible_for_Subsidies__c),
+      subsidies: u.Subsidies__c != null ? String(u.Subsidies__c) : undefined,
       bedrooms: typeof u.Number_of_Bedrooms__c === 'number' ? u.Number_of_Bedrooms__c : undefined,
       bathrooms: typeof u.Number_of_Bathrooms__c === 'number' ? u.Number_of_Bathrooms__c : undefined,
       bua: typeof u.BUA__c === 'number' ? u.BUA__c : undefined,
@@ -948,18 +984,35 @@ export async function getProject(id: string) {
   console.log('[Project] Fetching project from Salesforce:', id)
 
   try {
-    const projectQuery = `SELECT Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
+    const baseFields = `Id, Name, City__c, Province_Region__c, District__c, Project_Type__c,
                           Hero_Image_URL__c, Logo_URL__c, Available_Units__c,
                           Map_Centroid_Lat__c, Map_Centroid_Lng__c, Map_Geometry_JSON__c,
                           Map_Show_On_Map__c,
                           Project_Summary_English__c, Project_Summary_Arabic__c,
-                          Project_Location__c, Office_Location__c
+                          Project_Location__c, Office_Location__c`
+    const extraFieldSets = [
+      ', Total_Area__c, Leasable_Area__c, Completion_Year__c, Project_Value__c, Project_Code__c, Project_Address__c, Project_Address_Ar__c',
+      ', Total_Area__c, Leasable_Area__c, Completion_Year__c, Project_Value__c',
+      ', Total_Area__c',
+      '',
+    ]
+
+    let p: SalesforceProjectRecord | undefined
+    for (const extra of extraFieldSets) {
+      const projectQuery = `SELECT ${baseFields}${extra}
                           FROM Project__c 
                           WHERE Id = '${id}'
                           LIMIT 1`
-
-    const projectResult = await salesforceQuery<SalesforceProjectRecord>(projectQuery)
-    const p = projectResult.records?.[0]
+      try {
+        const projectResult = await salesforceQuery<SalesforceProjectRecord>(projectQuery)
+        p = projectResult.records?.[0]
+        break
+      } catch (error) {
+        const lastAttempt = extra === extraFieldSets[extraFieldSets.length - 1]
+        console.warn('[Project] SOQL failed, retrying without extra fields:', extra || '(base)', error)
+        if (lastAttempt) throw error
+      }
+    }
     if (!p) {
       return { success: false, error: 'Project not found in Salesforce' }
     }
@@ -1017,6 +1070,13 @@ export async function getProject(id: string) {
         nearbyLocations,
         notes,
         attachments,
+        landArea: toFiniteNumber(p.Total_Area__c),
+        leasableArea: toFiniteNumber(p.Leasable_Area__c),
+        completionYear: toFiniteNumber(p.Completion_Year__c),
+        projectValue: toFiniteNumber(p.Project_Value__c),
+        projectCode: (p.Project_Code__c || '').trim() || undefined,
+        projectAddress: (p.Project_Address__c || '').trim() || undefined,
+        projectAddressAr: (p.Project_Address_Ar__c || '').trim() || undefined,
         phases: [],
         hasAvailability: availableUnitsCount > 0,
         availablePhasesCount: availableUnitsCount,
@@ -1303,6 +1363,10 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
     floor: sfUnit.floor,
     finishing: sfUnit.finishing,
     usageType: sfUnit.usageType,
+    unitType: sfUnit.unitType,
+    leasingStatus: sfUnit.leasingStatus,
+    expectedRentalValue: sfUnit.expectedRentalValue,
+    rentalUnitType: sfUnit.rentalUnitType,
     view: sfUnit.view,
     hasGarden: sfUnit.hasGarden,
     hasLand: sfUnit.hasLand,
@@ -1318,6 +1382,9 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
     unitImage: sfUnit.unitImage,
     projectName: sfUnit.project?.name,
     propertyType: sfUnit.project?.projectType,
+    projectCode: sfUnit.project?.projectCode,
+    projectAddress: sfUnit.project?.projectAddress,
+    projectAddressAr: sfUnit.project?.projectAddressAr,
     phaseName: sfUnit.phase?.name,
     buildingName: sfUnit.building?.name,
     blockName: sfUnit.block?.name,
@@ -1328,7 +1395,7 @@ function mapSalesforceUnit(sfUnit: SalesforceUnitDTO & { Model__c?: string }): U
 export async function searchUnits(filters?: UnitFilters) {
   console.log('[Units] Searching units from Salesforce...', filters)
 
-  const wantsSubsidiesOnly = filters?.eligibleForSubsidies === true
+  const subsidiesFilter = filters?.eligibleForSubsidies
 
   const availableOnlyFilters: UnitFilters = {
     ...(filters || {}),
@@ -1336,10 +1403,12 @@ export async function searchUnits(filters?: UnitFilters) {
     phaseId: undefined,
     projectType: undefined,
   }
-  if (!wantsSubsidiesOnly) {
-    delete availableOnlyFilters.eligibleForSubsidies
-  } else {
+  if (subsidiesFilter === true) {
     availableOnlyFilters.eligibleForSubsidies = true
+  } else if (subsidiesFilter === false) {
+    availableOnlyFilters.eligibleForSubsidies = false
+  } else {
+    delete availableOnlyFilters.eligibleForSubsidies
   }
 
   try {
@@ -1348,8 +1417,10 @@ export async function searchUnits(filters?: UnitFilters) {
     if (result.success && result.data) {
       const rawUnits = result.data.units || []
       let mappedUnits = rawUnits.map(mapSalesforceUnit)
-      if (wantsSubsidiesOnly) {
+      if (subsidiesFilter === true) {
         mappedUnits = mappedUnits.filter((unit) => unit.eligibleForSubsidies === true)
+      } else if (subsidiesFilter === false) {
+        mappedUnits = mappedUnits.filter((unit) => unit.eligibleForSubsidies !== true)
       }
       console.log('[Units] ✅ Loaded from Salesforce:', mappedUnits.length)
       return {
@@ -1377,8 +1448,7 @@ export async function getUnit(id: string) {
   console.log('[Units] Fetching unit details from Salesforce:', id)
 
   try {
-    // Fetch unit by Id using SOQL via salesforce-query Netlify function
-    const soql = `SELECT Id, Name,
+    const unitBaseFields = `Id, Name,
       External_ID__c, Status__c, Price__c, Final_Price__c,
       Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c,
       Finishing__c, Usage_Type__c, View__c,
@@ -1389,8 +1459,8 @@ export async function getUnit(id: string) {
       Project__c,
       Phase__c,
       Block__c,
-      Building__c
-      FROM Unit__c WHERE Id = '${id}' LIMIT 1`
+      Building__c`
+    const unitCommercialFields = `, Leasing_Status__c, Expected_Rental_Value__c, Rental_Unit_Type__c`
 
     type SalesforceUnitRecord = {
       Id: string
@@ -1407,6 +1477,9 @@ export async function getUnit(id: string) {
       Finishing__c?: string
       Usage_Type__c?: string
       View__c?: string
+      Leasing_Status__c?: string
+      Expected_Rental_Value__c?: number
+      Rental_Unit_Type__c?: string
       Has_Garden__c?: boolean
       Has_Land__c?: boolean
       Has_Roof__c?: boolean
@@ -1426,7 +1499,18 @@ export async function getUnit(id: string) {
       Building__c?: string
     }
 
-    const result = await salesforceQuery<SalesforceUnitRecord>(soql)
+    let result: { records: SalesforceUnitRecord[]; totalSize?: number }
+    try {
+      result = await salesforceQuery<SalesforceUnitRecord>(
+        `SELECT ${unitBaseFields}${unitCommercialFields} FROM Unit__c WHERE Id = '${id}' LIMIT 1`
+      )
+    } catch (error) {
+      // FLS / undeployed commercial fields → INVALID_FIELD; retry without them
+      console.warn('[Units] Unit query with commercial fields failed, retrying base fields:', error)
+      result = await salesforceQuery<SalesforceUnitRecord>(
+        `SELECT ${unitBaseFields} FROM Unit__c WHERE Id = '${id}' LIMIT 1`
+      )
+    }
     const record = result.records?.[0]
     if (!record) return { success: false, error: 'Unit not found' }
 
@@ -1436,22 +1520,45 @@ export async function getUnit(id: string) {
     let projectNameFromSf: string | undefined
     let projectProvinceRegionFromSf: string | undefined
     let projectCityFromSf: string | undefined
+    let projectTypeFromSf: string | undefined
+    let projectCodeFromSf: string | undefined
+    let projectAddressFromSf: string | undefined
+    let projectAddressArFromSf: string | undefined
     if (resolvedProjectId) {
       try {
         const esc = resolvedProjectId.replace(/'/g, "\\'")
-        const projectSoql = `SELECT Id, Name, City__c, Province_Region__c FROM Project__c WHERE Id = '${esc}' LIMIT 1`
+        const projectBase = `Id, Name, City__c, Province_Region__c, Project_Type__c`
+        const projectCommercial = `, Project_Code__c, Project_Address__c, Project_Address_Ar__c`
         type SfProjectLite = {
           Id: string
           Name?: string
           City__c?: string
           Province_Region__c?: string
+          Project_Type__c?: string
+          Project_Code__c?: string
+          Project_Address__c?: string
+          Project_Address_Ar__c?: string
         }
-        const pr = await salesforceQuery<SfProjectLite>(projectSoql)
+        let pr: { records: SfProjectLite[] }
+        try {
+          pr = await salesforceQuery<SfProjectLite>(
+            `SELECT ${projectBase}${projectCommercial} FROM Project__c WHERE Id = '${esc}' LIMIT 1`
+          )
+        } catch (projectFieldError) {
+          console.warn('[Units] Project commercial fields unavailable, retrying base:', projectFieldError)
+          pr = await salesforceQuery<SfProjectLite>(
+            `SELECT ${projectBase} FROM Project__c WHERE Id = '${esc}' LIMIT 1`
+          )
+        }
         const prow = pr.records?.[0]
         if (prow) {
           projectNameFromSf = prow.Name?.trim()
           projectCityFromSf = prow.City__c?.trim()
           projectProvinceRegionFromSf = prow.Province_Region__c?.trim()
+          projectTypeFromSf = prow.Project_Type__c?.trim()
+          projectCodeFromSf = prow.Project_Code__c?.trim()
+          projectAddressFromSf = prow.Project_Address__c?.trim()
+          projectAddressArFromSf = prow.Project_Address_Ar__c?.trim()
         }
       } catch (e) {
         console.warn('[Units] Optional Project__c lookup failed (unit still returned):', e)
@@ -1484,6 +1591,10 @@ export async function getUnit(id: string) {
       floor: record.Floor__c || undefined,
       finishing: record.Finishing__c || undefined,
       usageType: record.Usage_Type__c || undefined,
+      leasingStatus: record.Leasing_Status__c || undefined,
+      expectedRentalValue:
+        record.Expected_Rental_Value__c != null ? Number(record.Expected_Rental_Value__c) : undefined,
+      rentalUnitType: record.Rental_Unit_Type__c || undefined,
       view: record.View__c || undefined,
       hasGarden: record.Has_Garden__c || false,
       hasLand: record.Has_Land__c || false,
@@ -1505,6 +1616,10 @@ export async function getUnit(id: string) {
       descriptionAr: undefined,
       projectName: projectNameFromSf,
       projectNameAr: projectNameFromSf,
+      propertyType: projectTypeFromSf,
+      projectCode: projectCodeFromSf,
+      projectAddress: projectAddressFromSf,
+      projectAddressAr: projectAddressArFromSf,
       projectProvinceRegion: projectProvinceRegionFromSf,
       projectCity: projectCityFromSf,
       phaseName: record.Phase__c || undefined,
@@ -1518,7 +1633,7 @@ export async function getUnit(id: string) {
 
     let relatedUnits: Unit[] = []
     if (unit.projectId) {
-      const relatedSoql = `SELECT Id, Name, Unit_Image__c, Price__c, Final_Price__c, Status__c,
+      const relatedSoql = `SELECT Id, Name, Unit_Image__c, Price__c, Final_Price__c, Eligible_for_Subsidies__c, Subsidies__c, Status__c,
         Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c
         FROM Unit__c
         WHERE Project__c = '${unit.projectId}' AND Id != '${id}'
@@ -1530,6 +1645,8 @@ export async function getUnit(id: string) {
         Unit_Image__c?: string
         Price__c?: number
         Final_Price__c?: number
+        Eligible_for_Subsidies__c?: string
+        Subsidies__c?: number
         Status__c?: string
         Number_of_Bedrooms__c?: number
         Number_of_Bathrooms__c?: number
@@ -1547,6 +1664,8 @@ export async function getUnit(id: string) {
           externalId: undefined,
           price: r.Price__c || 0,
           finalPrice: r.Final_Price__c || undefined,
+          eligibleForSubsidies: parseEligibleForSubsidies(r.Eligible_for_Subsidies__c),
+          subsidies: r.Subsidies__c ? String(r.Subsidies__c) : undefined,
           status: (r.Status__c as Unit['status']) || 'Available',
           bedrooms: r.Number_of_Bedrooms__c || 0,
           bathrooms: r.Number_of_Bathrooms__c || undefined,
@@ -1594,7 +1713,8 @@ export async function getUnit(id: string) {
 }
 
 export type CreateLeadOptions = {
-  supplierPdf?: File
+  commercialRegistrationPdf?: File
+  vatCertificatePdf?: File
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -1614,6 +1734,14 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
+async function toPdfAttachment(file: File, fallbackName: string) {
+  return {
+    fileName: file.name || fallbackName,
+    contentType: file.type || 'application/pdf',
+    base64: await fileToBase64(file),
+  }
+}
+
 // Leads (Salesforce via Netlify Function)
 export async function createLead(
   data: Omit<Lead, 'id' | 'createdAt' | 'source'>,
@@ -1622,11 +1750,18 @@ export async function createLead(
   try {
     const payload: Record<string, unknown> = { ...data, source: 'PWA' }
 
-    if (data.profile === 'Supplier' && options?.supplierPdf) {
-      payload.supplierAttachment = {
-        fileName: options.supplierPdf.name,
-        contentType: options.supplierPdf.type || 'application/pdf',
-        base64: await fileToBase64(options.supplierPdf),
+    if (data.profile === 'Supplier') {
+      if (options?.commercialRegistrationPdf) {
+        payload.commercialRegistrationAttachment = await toPdfAttachment(
+          options.commercialRegistrationPdf,
+          'commercial-registration.pdf'
+        )
+      }
+      if (options?.vatCertificatePdf) {
+        payload.vatCertificateAttachment = await toPdfAttachment(
+          options.vatCertificatePdf,
+          'vat-certificate.pdf'
+        )
       }
     }
 
@@ -1676,13 +1811,45 @@ export async function logout() {
 }
 
 // My Opportunities + Units (session-based)
+export type MyInstallment = {
+  id: string
+  name: string
+  type?: string | null
+  status?: string | null
+  amount?: number | null
+  percentage?: number | null
+  dueDate?: string | null
+  contractId?: string | null
+  opportunityId?: string | null
+  unitLabel?: string | null
+  paymentPlan?: string | null
+}
+
+export type MyContractAttachment = {
+  id: string
+  contentDocumentId?: string
+  title: string
+  fileExtension?: string | null
+  fileType?: string | null
+  size?: number | null
+  filename?: string
+  url: string
+}
+
 export type MyOpportunity = {
   id: string
   name: string
   stageName?: string
   closeDate?: string | null
   amount?: number | null
+  contractNumber?: string | null
+  contractStatus?: string | null
+  paymentMethod?: string | null
+  paymentProgress?: number | null
+  unitNumber?: string | null
   units: Unit[]
+  installments?: MyInstallment[]
+  attachments?: MyContractAttachment[]
 }
 
 export async function getMyOpportunities() {
@@ -1875,7 +2042,7 @@ export async function getOfficeLocations(): Promise<OfficeLocationRecord[]> {
           coords,
           dirUrl: coords
             ? `https://www.google.com/maps/dir/?api=1&destination=${coords}`
-            : url,
+            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.Name)}`,
         }
       })
   } catch (error) {

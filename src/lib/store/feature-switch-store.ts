@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { readCachedFeatureSwitchesSync } from "../featureSwitches";
 
 interface FeatureSwitchState {
   values: Record<string, boolean>;
@@ -8,15 +9,18 @@ interface FeatureSwitchState {
   getFeature: (apiName: string, defaultValue?: boolean) => boolean;
 }
 
+function normalizeValues(values: Record<string, boolean>) {
+  return Object.fromEntries(Object.entries(values).map(([k, v]) => [k.toLowerCase(), v]));
+}
+
+const cached = readCachedFeatureSwitchesSync();
+
 export const useFeatureSwitchStore = create<FeatureSwitchState>((set, get) => ({
-  values: {},
-  fields: [],
-  isReady: false,
+  values: cached ? normalizeValues(cached.values) : {},
+  fields: cached?.fields ?? [],
+  isReady: true,
   setFeatures: (values, fields = []) => {
-    const lowerValues = Object.fromEntries(
-      Object.entries(values).map(([k, v]) => [k.toLowerCase(), v])
-    );
-    set({ values: lowerValues, fields, isReady: true });
+    set({ values: normalizeValues(values), fields, isReady: true });
   },
   getFeature: (apiName, defaultValue = false) => {
     const state = get();

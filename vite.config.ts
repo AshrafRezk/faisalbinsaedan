@@ -5,9 +5,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    host: '127.0.0.1',
+    // Bind all IPv4 interfaces so Netlify Dev can reach Vite whether it uses
+    // 127.0.0.1 or localhost→IPv4 (see scripts/netlify-dev.sh dns-result-order).
+    // host: 'localhost' often listens on ::1 only, which makes :8888 hang.
+    // Bind on IPv6 so Netlify dev proxy can reach Vite even when it
+    // resolves `localhost` to ::1.
+    host: '::',
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8888',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     react(),
@@ -48,7 +59,10 @@ export default defineConfig({
         dir: 'rtl'
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,pdf}'],
+        // Do not SPA-fallback PDF/doc paths — otherwise iframe previews load index.html
+        // (You said to ignore PDF routing issues, so we only deny API fallback.)
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,

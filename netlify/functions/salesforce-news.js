@@ -121,34 +121,59 @@ export const handler = async (event) => {
 
             let sfData = await sfResponse.json();
 
-            // Helper to rewrite relative URLs
-            const orgOrigin = tokenInstanceUrl.replace(/\/$/, '');
-            const toAbsoluteUrl = (relativeUrl) => {
-                if (!relativeUrl) return '';
-                if (/^https?:\/\//i.test(relativeUrl)) return relativeUrl;
-                const path = relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`;
+            // Salesforce ContentVersion download URLs require auth — browsers cannot load them
+            // directly. Proxy through /api/salesforce-file like project/unit media.
+            const extractVersionId = (url) => {
+                if (!url) return null;
+                const match =
+                    String(url).match(/\/version\/download\/([a-zA-Z0-9]{15,18})/i) ||
+                    String(url).match(/\/ContentVersion\/([a-zA-Z0-9]{15,18})/i) ||
+                    String(url).match(/\b(068[a-zA-Z0-9]{12,15})\b/);
+                return match?.[1] || null;
+            };
+
+            const rewriteMediaUrl = (url) => {
+                if (!url) return '';
+                const versionId = extractVersionId(url);
+                if (versionId) {
+                    return `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}`;
+                }
+                if (/^https?:\/\//i.test(url)) return url;
+                const orgOrigin = tokenInstanceUrl.replace(/\/$/, '');
+                const path = url.startsWith('/') ? url : `/${url}`;
                 return `${orgOrigin}${path}`;
+            };
+
+            const rewriteHtmlSrcs = (html) => {
+                if (!html) return html;
+                return html.replace(/src=["']([^"']+)["']/gi, (match, src) => {
+                    const rewritten = rewriteMediaUrl(src);
+                    return rewritten ? `src="${rewritten}"` : match;
+                });
             };
 
             if (sfData?.data?.articles) {
                 sfData.data.articles = sfData.data.articles.map(article => {
                     if (article.coverImageUrl) {
-                        article.coverImageUrl = toAbsoluteUrl(article.coverImageUrl);
+                        article.coverImageUrl = rewriteMediaUrl(article.coverImageUrl);
+                    }
+                    if (article.body) {
+                        article.body = rewriteHtmlSrcs(article.body);
+                    }
+                    if (article.bodyAr) {
+                        article.bodyAr = rewriteHtmlSrcs(article.bodyAr);
                     }
                     return article;
                 });
             } else if (sfData?.data?.article) {
                 if (sfData.data.article.coverImageUrl) {
-                    sfData.data.article.coverImageUrl = toAbsoluteUrl(sfData.data.article.coverImageUrl);
+                    sfData.data.article.coverImageUrl = rewriteMediaUrl(sfData.data.article.coverImageUrl);
                 }
                 if (sfData.data.article.body) {
-                    sfData.data.article.body = sfData.data.article.body.replace(
-                        /src=["'](?!\w+:\/\/)([^"']+)["']/gi,
-                        (match, path) => {
-                            const cleanPath = path.startsWith('/') ? path : `/${path}`;
-                            return `src="${orgOrigin}${cleanPath}"`;
-                        }
-                    );
+                    sfData.data.article.body = rewriteHtmlSrcs(sfData.data.article.body);
+                }
+                if (sfData.data.article.bodyAr) {
+                    sfData.data.article.bodyAr = rewriteHtmlSrcs(sfData.data.article.bodyAr);
                 }
             }
 

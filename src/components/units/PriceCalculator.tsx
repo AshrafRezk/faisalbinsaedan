@@ -17,6 +17,7 @@ import { Calculator, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Unit } from '../../lib/types'
 import CurrencyIcon from '../ui/CurrencyIcon'
+import { getUnitDisplayPrice, getUnitPriceBreakdown } from '../../lib/unitPrice'
 
 interface PriceCalculatorProps {
   unit: Unit
@@ -29,8 +30,10 @@ export default function PriceCalculator({ unit, isOpen, onClose }: PriceCalculat
   const [downPayment, setDownPayment] = useState(20)
   const [loanTerm, setLoanTerm] = useState(20)
   const [interestRate, setInterestRate] = useState(4.5)
+  const displayPrice = getUnitDisplayPrice(unit)
+  const { original, afterSubsidy, showBoth } = getUnitPriceBreakdown(unit)
 
-  const loanAmount = unit.price * (1 - downPayment / 100)
+  const loanAmount = displayPrice * (1 - downPayment / 100)
   const monthlyRate = interestRate / 100 / 12
   const numberOfPayments = loanTerm * 12
 
@@ -41,7 +44,7 @@ export default function PriceCalculator({ unit, isOpen, onClose }: PriceCalculat
       : 0
 
   const totalInterest = monthlyPayment * numberOfPayments - loanAmount
-  const totalAmount = unit.price + totalInterest
+  const totalAmount = displayPrice + totalInterest
 
   const formatCurrency = (amount: number) => {
     const formatted = new Intl.NumberFormat(i18n.language === 'ar' ? 'ar-SA' : 'en-US', {
@@ -72,12 +75,35 @@ export default function PriceCalculator({ unit, isOpen, onClose }: PriceCalculat
 
       <DialogContent>
         <Box sx={{ mb: 3 }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            {t('calculator.unitPrice')}
-          </Typography>
-          <Typography variant="h5" fontWeight="bold" color="primary.main">
-            {formatCurrency(unit.price)}
-          </Typography>
+          {showBoth ? (
+            <>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {t('calculator.priceBeforeSubsidy')}
+              </Typography>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ mb: 1.5, textDecoration: 'line-through' }}
+              >
+                {formatCurrency(original)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {t('calculator.priceAfterSubsidy')}
+              </Typography>
+              <Typography variant="h5" fontWeight="bold" color="primary.main">
+                {formatCurrency(afterSubsidy)}
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {t('calculator.unitPrice')}
+              </Typography>
+              <Typography variant="h5" fontWeight="bold" color="primary.main">
+                {formatCurrency(displayPrice)}
+              </Typography>
+            </>
+          )}
         </Box>
 
         <Grid container spacing={3}>
@@ -97,7 +123,7 @@ export default function PriceCalculator({ unit, isOpen, onClose }: PriceCalculat
               valueLabelFormat={(value) => t('calculator.downPaymentValue', { value })}
             />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {formatCurrency(unit.price * (downPayment / 100))}
+              {formatCurrency(displayPrice * (downPayment / 100))}
             </Typography>
           </Grid>
 

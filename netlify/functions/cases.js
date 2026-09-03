@@ -153,6 +153,17 @@ async function verifySession(event) {
   return contactId
 }
 
+async function getContactAccountOwner(instanceUrl, accessToken, contactId) {
+  const soql = `SELECT AccountId, Account.OwnerId FROM Contact WHERE Id = '${contactId}' LIMIT 1`
+  const res = await sfQuery(instanceUrl, accessToken, soql)
+  const record = (res.records || [])[0]
+  if (!record) return { accountId: '', ownerId: '' }
+  return {
+    accountId: pickId(record.AccountId),
+    ownerId: pickId(record.Account?.OwnerId),
+  }
+}
+
 async function getContactMobile(instanceUrl, accessToken, contactId) {
   const preferred = process.env.SALESFORCE_CONTACT_MOBILE_FIELD
   const fieldSets = [
@@ -415,7 +426,10 @@ async function createCaseRecord(instanceUrl, accessToken, contactId, body) {
   const mobileField = process.env.SALESFORCE_CASE_MOBILE_FIELD || 'Mobile_Number__c'
   const origin = process.env.SALESFORCE_CASE_ORIGIN || 'PWA'
 
-  const mobileNumber = await getContactMobile(instanceUrl, accessToken, contactId)
+  const [{ accountId, ownerId: accountOwnerId }, mobileNumber] = await Promise.all([
+    getContactAccountOwner(instanceUrl, accessToken, contactId),
+    getContactMobile(instanceUrl, accessToken, contactId),
+  ])
   if (!mobileNumber) {
     const err = new Error(
       'Your account has no mobile number on file. Please contact support to update your profile.'
@@ -464,6 +478,8 @@ async function createCaseRecord(instanceUrl, accessToken, contactId, body) {
     [mobileField]: mobileNumber,
   }
 
+  if (accountId) payload.AccountId = accountId
+  if (accountOwnerId) payload.OwnerId = accountOwnerId
   if (unitId) payload[unitField] = unitId
   if (categoryField) payload[categoryField] = category
 
@@ -483,6 +499,8 @@ async function createCaseRecord(instanceUrl, accessToken, contactId, body) {
       [projectField]: projectName,
       [mobileField]: mobileNumber,
     }
+    if (accountId) fallback.AccountId = accountId
+    if (accountOwnerId) fallback.OwnerId = accountOwnerId
     if (unitId) fallback[unitField] = unitId
     console.warn('[cases] Retrying with core fields:', firstError.message)
     createResult = await sfCreate(instanceUrl, accessToken, objectName, fallback)

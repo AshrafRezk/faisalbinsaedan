@@ -127,7 +127,9 @@ async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
     Number_of_Bedrooms__c, Number_of_Bathrooms__c, Total_Area__c, BUA__c, Floor__c,
     Finishing__c, Usage_Type__c, View__c,
     Eligible_for_Subsidies__c, Subsidies__c,
-    Unit_Image__c
+    Unit_Image__c,
+    Building__r.Block__r.Phase__r.Project__c,
+    Building__r.Block__r.Phase__r.Project__r.Name
     FROM ${objectName} WHERE Id IN (${idList})`
   const res = await sfQuery(instanceUrl, accessToken, soql)
   const map = new Map()
@@ -135,6 +137,75 @@ async function fetchUnitsByIds(instanceUrl, accessToken, unitIds) {
     map.set(row.Id, row)
   }
   return map
+}
+
+/** Latest Files (ContentVersion) linked to Contract__c records. */
+async function fetchAttachmentsByContractIds(instanceUrl, accessToken, contractIds) {
+  const unique = [...new Set(contractIds.filter(Boolean))]
+  const byContract = new Map()
+  for (const id of unique) byContract.set(id, [])
+  if (unique.length === 0) return byContract
+
+  const idList = unique.map((id) => `'${id}'`).join(', ')
+  try {
+    const linksSoql = `SELECT ContentDocumentId, LinkedEntityId
+      FROM ContentDocumentLink
+      WHERE LinkedEntityId IN (${idList})`
+    const linksRes = await sfQuery(instanceUrl, accessToken, linksSoql)
+    const links = linksRes.records || []
+    if (links.length === 0) return byContract
+
+    const docIds = [...new Set(links.map((l) => pickId(l.ContentDocumentId)).filter(Boolean))]
+    if (docIds.length === 0) return byContract
+
+    const docList = docIds.map((id) => `'${id}'`).join(', ')
+    const versionsSoql = `SELECT Id, Title, FileExtension, FileType, ContentDocumentId, ContentSize, CreatedDate
+      FROM ContentVersion
+      WHERE IsLatest = true AND ContentDocumentId IN (${docList})
+      ORDER BY CreatedDate DESC`
+    const versionsRes = await sfQuery(instanceUrl, accessToken, versionsSoql)
+    const versionByDoc = new Map()
+    for (const v of versionsRes.records || []) {
+      const docId = pickId(v.ContentDocumentId)
+      if (docId && !versionByDoc.has(docId)) versionByDoc.set(docId, v)
+    }
+
+    for (const link of links) {
+      const contractId = pickId(link.LinkedEntityId)
+      const docId = pickId(link.ContentDocumentId)
+      const version = docId ? versionByDoc.get(docId) : null
+      if (!contractId || !version) continue
+      const versionId = pickId(version.Id)
+      if (!versionId) continue
+      const title = String(version.Title || 'Contract').trim() || 'Contract'
+      const ext = String(version.FileExtension || '').trim().toLowerCase()
+      const filename = ext && !title.toLowerCase().endsWith(`.${ext}`) ? `${title}.${ext}` : title
+      const list = byContract.get(contractId) || []
+      list.push({
+        id: versionId,
+        contentDocumentId: docId,
+        title,
+        fileExtension: ext || null,
+        fileType: version.FileType || null,
+        size: version.ContentSize != null ? Number(version.ContentSize) : null,
+        filename,
+        url: `/api/salesforce-file?versionId=${encodeURIComponent(versionId)}&filename=${encodeURIComponent(filename)}`,
+      })
+      byContract.set(contractId, list)
+    }
+  } catch (error) {
+    console.error('[my-opportunities] Contract attachments query failed:', error)
+  }
+
+  return byContract
+}
+
+function projectFromUnitRecord(unitRecord) {
+  const phase = unitRecord?.Building__r?.Block__r?.Phase__r
+  return {
+    id: pickId(phase?.Project__c) || '',
+    name: String(phase?.Project__r?.Name || '').trim(),
+  }
 }
 
 function resolveProjectFromField(projectFieldValue, projectsById) {
@@ -193,6 +264,8 @@ export const handler = async (event) => {
     const contractFields = [
       'Id',
       'Name',
+      'Status__c',
+      'CreatedDate',
       'Project__c',
       'Unit__c',
       'Unit_Price__c',
@@ -203,6 +276,8 @@ export const handler = async (event) => {
       'Block__c',
       'Phase__c',
       'Payment_Method__c',
+      'Opportunity__c',
+      'Opportunity__r.Unit__c',
     ].join(', ')
 
     const contractSoql = `SELECT ${contractFields}
@@ -216,22 +291,130 @@ export const handler = async (event) => {
     const contracts = contractRes.records || []
     console.log(`[my-opportunities] Found ${contracts.length} contracts for account ${accountId}`)
 
-    const projectIds = contracts.map((c) => pickId(c.Project__c)).filter(Boolean)
-    const unitIds = contracts.map((c) => pickId(c.Unit__c)).filter(Boolean)
-    const [projectsById, unitsById] = await Promise.all([
-      fetchProjectsByIds(instanceUrl, accessToken, projectIds),
-      fetchUnitsByIds(instanceUrl, accessToken, unitIds),
-    ])
+    const contractIds = contracts.map((c) => pickId(c.Id)).filter(Boolean)
+    const opportunityIds = contracts.map((c) => pickId(c.Opportunity__c)).filter(Boolean)
+
+    // 2b) Installments for these contracts / account
+    let installmentRecords = []
+    if (contractIds.length > 0 || opportunityIds.length > 0) {
+      const installmentFields = [
+        'Id',
+        'Name',
+        'Installment_Type__c',
+        'Installment_Status__c',
+        'Installment_Amount__c',
+        'Installment_Percentage__c',
+        'Due_Date__c',
+        'Contract__c',
+        'Opportunity__c',
+        'Unit__c',
+        'Payment_Plan__c',
+      ].join(', ')
+
+      const installmentFilters = [`Account__c = '${accountId}'`]
+      if (contractIds.length > 0) {
+        installmentFilters.push(`Contract__c IN (${contractIds.map((id) => `'${id}'`).join(', ')})`)
+      }
+      if (opportunityIds.length > 0) {
+        installmentFilters.push(`Opportunity__c IN (${opportunityIds.map((id) => `'${id}'`).join(', ')})`)
+      }
+
+      const installmentSoql = `SELECT ${installmentFields}
+        FROM Installment__c
+        WHERE ${installmentFilters.join(' OR ')}
+        ORDER BY Due_Date__c ASC NULLS LAST, CreatedDate ASC
+        LIMIT 200`
+
+      console.log('[my-opportunities] Fetching installments...')
+      try {
+        const installmentRes = await sfQuery(instanceUrl, accessToken, installmentSoql)
+        installmentRecords = installmentRes.records || []
+        console.log(`[my-opportunities] Found ${installmentRecords.length} installments`)
+      } catch (installmentError) {
+        console.error('[my-opportunities] Installment query failed:', installmentError)
+      }
+    }
+
+    const mapInstallment = (row) => ({
+      id: pickId(row.Id),
+      name: String(row.Name || '').trim(),
+      type: row.Installment_Type__c || null,
+      status: row.Installment_Status__c || null,
+      amount: row.Installment_Amount__c != null ? Number(row.Installment_Amount__c) : null,
+      percentage: row.Installment_Percentage__c != null ? Number(row.Installment_Percentage__c) : null,
+      dueDate: row.Due_Date__c || null,
+      contractId: pickId(row.Contract__c) || null,
+      opportunityId: pickId(row.Opportunity__c) || null,
+      unitLabel: pickLabel(row.Unit__c) || null,
+      paymentPlan: pickLabel(row.Payment_Plan__c) || null,
+    })
+
+    const installmentsByContractId = new Map()
+    const installmentsByOpportunityId = new Map()
+    for (const row of installmentRecords) {
+      const mapped = mapInstallment(row)
+      if (mapped.contractId) {
+        const list = installmentsByContractId.get(mapped.contractId) || []
+        list.push(mapped)
+        installmentsByContractId.set(mapped.contractId, list)
+      }
+      if (mapped.opportunityId) {
+        const list = installmentsByOpportunityId.get(mapped.opportunityId) || []
+        list.push(mapped)
+        installmentsByOpportunityId.set(mapped.opportunityId, list)
+      }
+    }
+
+    const unitIds = contracts
+      .map((c) => pickId(c.Opportunity__r?.Unit__c) || pickId(c.Unit__c))
+      .filter(Boolean)
+    const unitsById = await fetchUnitsByIds(instanceUrl, accessToken, unitIds)
+    const projectIds = [
+      ...unitIds.map((id) => projectFromUnitRecord(unitsById.get(id)).id),
+      ...contracts.map((c) => pickId(c.Project__c)),
+    ].filter(Boolean)
+    const projectsById = await fetchProjectsByIds(instanceUrl, accessToken, projectIds)
+    const attachmentsByContractId = await fetchAttachmentsByContractIds(
+      instanceUrl,
+      accessToken,
+      contractIds
+    )
 
     // 3) Map Contract__c to standard Opportunity/Unit structures expected by the frontend
     const mappedOpportunities = contracts.map((c) => {
-      const project = resolveProjectFromField(c.Project__c, projectsById)
-      const unit = resolveUnitFromField(c.Unit__c, unitsById)
+      const contractId = pickId(c.Id)
+      const opportunityId = pickId(c.Opportunity__c)
+      const oppUnitId = pickId(c.Opportunity__r?.Unit__c)
+      const unitFieldValue = oppUnitId || c.Unit__c
+      const unit = resolveUnitFromField(unitFieldValue, unitsById)
+      if (!unit.id && oppUnitId) unit.id = oppUnitId
+      if (!unit.label && c.Unit__c) unit.label = pickLabel(c.Unit__c)
       const u = unit.record || {}
+      const unitProject = projectFromUnitRecord(u)
+      const oppProjectId = unitProject.id
+      const oppProjectName = unitProject.name || pickLabel(c.Project__c)
       
+      const projectFromLookup = oppProjectId ? projectsById.get(oppProjectId) : undefined
+      const project = projectFromLookup
+        ? { id: oppProjectId, name: projectFromLookup.name || oppProjectName, heroImageUrl: projectFromLookup.heroImageUrl }
+        : resolveProjectFromField(c.Project__c, projectsById)
+
+      const fromContract = installmentsByContractId.get(contractId) || []
+      const fromOpportunity = opportunityId
+        ? (installmentsByOpportunityId.get(opportunityId) || []).filter(
+            (inst) => !inst.contractId || inst.contractId === contractId
+          )
+        : []
+      const seen = new Set()
+      const installments = [...fromContract, ...fromOpportunity].filter((inst) => {
+        if (!inst.id || seen.has(inst.id)) return false
+        seen.add(inst.id)
+        return true
+      })
+
       const mappedUnit = {
         id: unit.id || c.Id,
-        projectId: project.id || pickId(c.Project__c) || '',
+        projectId: project.id || oppProjectId || pickId(c.Project__c) || '',
         phaseId: '',
         unitNumber: unit.label || 'N/A',
         externalId: c.Name,
@@ -256,8 +439,8 @@ export const handler = async (event) => {
         projectHeroImage: project.heroImageUrl,
         paymentProgress: Number(c.Unit_Cumulative_Progress_Percentage__c || 0), // maps actual cumulative progress!
         paymentStatus: c.Payment_Method__c ?? undefined,
-        projectName: project.name || undefined,
-        projectNameAr: project.name || undefined,
+        projectName: project.name || oppProjectName || undefined,
+        projectNameAr: project.name || oppProjectName || undefined,
         phaseName: c.Phase__c ?? undefined,
         phaseNameAr: c.Phase__c ?? undefined,
         buildingName: c.Building__c ?? undefined,
@@ -265,12 +448,19 @@ export const handler = async (event) => {
       }
 
       return {
-        id: c.Id,
-        name: project.name || 'Unit Contract',
+        id: contractId,
+        name: project.name || oppProjectName || 'Unit Contract',
         stageName: `${c.Name}`, // contract number (as displayed in screenshot)
-        closeDate: null,
+        closeDate: c.CreatedDate || null,
         amount: Number(c.Unit_Final_Price__c || c.Unit_Price__c || 0),
+        contractNumber: c.Name || null,
+        contractStatus: c.Status__c || null,
+        paymentMethod: c.Payment_Method__c || null,
+        paymentProgress: Number(c.Unit_Cumulative_Progress_Percentage__c || 0),
+        unitNumber: unit.label || pickLabel(c.Unit__c) || null,
         units: [mappedUnit],
+        installments,
+        attachments: attachmentsByContractId.get(contractId) || [],
       }
     })
 

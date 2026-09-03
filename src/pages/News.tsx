@@ -8,26 +8,230 @@ import {
   Pagination,
   Skeleton,
   Chip,
-  Divider,
+  Card,
+  CardContent,
   InputAdornment,
+  Paper,
 } from '@mui/material'
-import { Search as SearchIcon, ArrowRight, ArrowLeft, CalendarDays } from 'lucide-react'
+import { alpha } from '@mui/material/styles'
+import { motion } from 'framer-motion'
+import { Search as SearchIcon, ArrowRight, ArrowLeft, CalendarDays, Newspaper, Instagram } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getNewsArticles } from '../lib/api-client'
 import { NewsArticle } from '../lib/types'
+import { newsExcerpt, newsTitle } from '../lib/newsLocale'
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop'
 
+const INSTAGRAM_URL = 'https://www.instagram.com/faisalsaedanco'
+
 const CATEGORIES = ['Residential', 'Commercial', 'Investment']
 
-const formatDate = (date: Date, isRtl: boolean) => {
-  return new Intl.DateTimeFormat(isRtl ? 'ar-SA' : 'en-US', {
-    month: 'short',
-    day: '2-digit',
+function formatDateParts(date: Date, isRtl: boolean) {
+  const day = new Intl.DateTimeFormat(isRtl ? 'ar-SA' : 'en-US', { day: '2-digit' }).format(date)
+  const month = new Intl.DateTimeFormat(isRtl ? 'ar-SA' : 'en-US', { month: 'short' }).format(date)
+  const full = new Intl.DateTimeFormat(isRtl ? 'ar-SA' : 'en-US', {
+    month: 'long',
+    day: 'numeric',
     year: 'numeric',
   }).format(date)
+  return { day, month, full }
+}
+
+type BlogPostCardProps = {
+  article: NewsArticle
+  isRtl: boolean
+  index: number
+}
+
+function BlogPostCard({ article, isRtl, index }: BlogPostCardProps) {
+  const { t } = useTranslation()
+  const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
+  const dateParts = pubDate ? formatDateParts(pubDate, isRtl) : null
+  const ReadMoreArrow = isRtl ? ArrowLeft : ArrowRight
+  const title = newsTitle(article, isRtl)
+  const excerpt = newsExcerpt(article, isRtl)
+
+  return (
+    <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: Math.min(index * 0.05, 0.3) }}
+        style={{ height: '100%' }}
+      >
+        <Card
+          component="article"
+          elevation={0}
+          sx={(theme) => ({
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            bgcolor: alpha(theme.palette.background.paper, 0.9),
+            backdropFilter: 'blur(12px)',
+            border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+            boxShadow: '0 8px 24px rgba(2, 6, 23, 0.06)',
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: `0 16px 40px ${alpha(theme.palette.primary.main, 0.12)}`,
+            },
+          })}
+        >
+          <Box
+            component={Link}
+            to={`/news/${article.id}`}
+            sx={{
+              position: 'relative',
+              display: 'block',
+              aspectRatio: '16/10',
+              overflow: 'hidden',
+              '&:hover img': { transform: 'scale(1.05)' },
+            }}
+          >
+            <Box
+              component="img"
+              src={article.coverImageUrl || FALLBACK_IMAGE}
+              alt={title}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+                transition: 'transform 0.45s ease',
+              }}
+            />
+            {dateParts && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 12,
+                  ...(isRtl ? { left: 12 } : { right: 12 }),
+                  minWidth: 52,
+                  px: 1,
+                  py: 0.75,
+                  borderRadius: 1,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  textAlign: 'center',
+                  lineHeight: 1.1,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                }}
+              >
+                <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, fontSize: '1rem' }}>
+                  {dateParts.day}
+                </Typography>
+                <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                  {dateParts.month}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+          <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2.5, gap: 1 }}>
+            <Chip
+              label={article.segment || t('news.badge', 'Blog')}
+              size="small"
+              sx={{
+                alignSelf: 'flex-start',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                color: 'primary.main',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                height: 24,
+              }}
+            />
+
+            <Typography
+              component={Link}
+              to={`/news/${article.id}`}
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.35,
+                color: 'text.primary',
+                textDecoration: 'none',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                transition: 'color 0.2s ease',
+                '&:hover': { color: 'primary.main' },
+              }}
+            >
+              {title}
+            </Typography>
+
+            {dateParts && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
+                <CalendarDays size={14} />
+                <Typography variant="caption">{dateParts.full}</Typography>
+              </Box>
+            )}
+
+            {excerpt && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  flexGrow: 1,
+                  lineHeight: 1.65,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {excerpt}
+              </Typography>
+            )}
+
+            <Box
+              component={Link}
+              to={`/news/${article.id}`}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                mt: 'auto',
+                pt: 1,
+                color: 'primary.main',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                textDecoration: 'none',
+                '&:hover': { gap: 0.85 },
+                transition: 'gap 0.2s ease',
+              }}
+            >
+              {t('news.continueReading', 'Continue reading')}
+              <ReadMoreArrow size={15} />
+            </Box>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </Grid>
+  )
+}
+
+function BlogPostCardSkeleton() {
+  return (
+    <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+      <Card elevation={0} sx={{ borderRadius: '16px', overflow: 'hidden' }}>
+        <Skeleton variant="rectangular" sx={{ aspectRatio: '16/10' }} />
+        <CardContent>
+          <Skeleton width="30%" height={24} sx={{ mb: 1 }} />
+          <Skeleton height={28} />
+          <Skeleton height={20} width="50%" sx={{ my: 1 }} />
+          <Skeleton height={16} />
+          <Skeleton height={16} width="90%" />
+        </CardContent>
+      </Card>
+    </Grid>
+  )
 }
 
 export default function News() {
@@ -40,7 +244,6 @@ export default function News() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-
   const [segment, setSegment] = useState('All')
   const [keyword, setKeyword] = useState('')
 
@@ -49,7 +252,7 @@ export default function News() {
     try {
       const filters: Record<string, unknown> = {
         page,
-        pageSize: 8,
+        pageSize: 9,
         sortBy: 'Publication_Date__c',
         sortOrder: 'DESC',
       }
@@ -60,7 +263,6 @@ export default function News() {
       if (res.success && res.data) {
         setArticles(res.data.articles || [])
         setTotalPages(res.data.pagination?.totalPages || 1)
-        // Seed the "Recent Posts" sidebar once, from the unfiltered first page.
         setRecent((prev) =>
           prev.length === 0 && segment === 'All' && !keyword
             ? (res.data.articles || []).slice(0, 5)
@@ -88,165 +290,267 @@ export default function News() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const ReadMoreArrow = isRtl ? ArrowLeft : ArrowRight
+  const sidebar = (
+    <Paper
+      elevation={0}
+      sx={(theme) => ({
+        p: 2.5,
+        borderRadius: 3,
+        bgcolor: alpha(theme.palette.background.paper, 0.85),
+        backdropFilter: 'blur(16px)',
+        border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+        position: { md: 'sticky' },
+        top: { md: 96 },
+      })}
+    >
+      <TextField
+        fullWidth
+        size="small"
+        placeholder={t('news.searchKeywords', 'Search keywords')}
+        value={keyword}
+        onChange={(e) => {
+          setKeyword(e.target.value)
+          setPage(1)
+        }}
+        sx={{ mb: 3 }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon size={16} />
+            </InputAdornment>
+          ),
+        }}
+      />
 
-  const renderPostCard = (article: NewsArticle) => {
-    const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
-    return (
-      <Box key={article.id} component="article" sx={{ mb: 6 }}>
-        <Box
-          component={Link}
-          to={`/news/${article.id}`}
-          sx={{
-            display: 'block',
-            overflow: 'hidden',
-            borderRadius: 2,
-            mb: 2.5,
-            '&:hover img': { transform: 'scale(1.04)' },
-          }}
-        >
-          <Box
-            component="img"
-            src={article.coverImageUrl || FALLBACK_IMAGE}
-            alt={article.title}
-            sx={{
-              width: '100%',
-              height: { xs: 220, sm: 340 },
-              objectFit: 'cover',
-              display: 'block',
-              transition: 'transform 0.5s ease',
-            }}
-          />
-        </Box>
-
-        {/* Meta row */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, flexWrap: 'wrap' }}>
-          {pubDate && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-              <CalendarDays size={15} />
-              <Typography variant="caption" sx={{ letterSpacing: 0.5 }}>
-                {formatDate(pubDate, isRtl)}
-              </Typography>
+      <Typography
+        variant="subtitle1"
+        sx={{ fontWeight: 700, mb: 1.5, pb: 1, borderBottom: 2, borderColor: 'primary.main', textAlign: align }}
+      >
+        {t('news.categories', 'Categories')}
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4 }}>
+        {['All', ...CATEGORIES].map((cat) => {
+          const active = segment === cat
+          return (
+            <Box
+              key={cat}
+              onClick={() => {
+                setSegment(cat)
+                setPage(1)
+              }}
+              sx={{
+                cursor: 'pointer',
+                py: 1.1,
+                borderBottom: 1,
+                borderColor: 'divider',
+                color: active ? 'primary.main' : 'text.primary',
+                fontWeight: active ? 700 : 500,
+                textAlign: align,
+                transition: 'color 0.2s ease',
+                '&:hover': { color: 'primary.main' },
+              }}
+            >
+              {cat === 'All' ? t('news.allCategories', 'All Posts') : cat}
             </Box>
-          )}
-          <Chip
-            label={article.segment || t('news.badge', 'Blog')}
-            size="small"
-            sx={{
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              fontWeight: 600,
-              fontSize: '0.7rem',
-              height: 22,
-              borderRadius: 0.75,
-            }}
-          />
-        </Box>
+          )
+        })}
+      </Box>
 
-        <Typography
-          component={Link}
-          to={`/news/${article.id}`}
-          variant="h4"
-          sx={{
-            display: 'block',
-            mb: 1.5,
-            fontWeight: 700,
-            lineHeight: 1.3,
-            color: 'text.primary',
-            textDecoration: 'none',
-            textAlign: align,
-            transition: 'color 0.2s ease',
-            '&:hover': { color: 'primary.main' },
-            fontSize: { xs: '1.4rem', md: '1.75rem' },
-          }}
-        >
-          {article.title}
-        </Typography>
-
-        {article.excerpt && (
+      {recent.length > 0 && (
+        <>
           <Typography
-            variant="body1"
-            sx={{
-              color: 'text.secondary',
-              mb: 2,
-              textAlign: align,
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
+            variant="subtitle1"
+            sx={{ fontWeight: 700, mb: 1.5, pb: 1, borderBottom: 2, borderColor: 'primary.main', textAlign: align }}
           >
-            {article.excerpt}
+            {t('news.recentPosts', 'Recent Posts')}
           </Typography>
-        )}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {recent.map((article) => {
+              const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
+              const title = newsTitle(article, isRtl)
+              return (
+                <Box
+                  key={article.id}
+                  component={Link}
+                  to={`/news/${article.id}`}
+                  sx={{
+                    display: 'flex',
+                    gap: 1.5,
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    '&:hover .recent-title': { color: 'primary.main' },
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={article.coverImageUrl || FALLBACK_IMAGE}
+                    alt={title}
+                    sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
+                  />
+                  <Box sx={{ textAlign: align, minWidth: 0 }}>
+                    <Typography
+                      className="recent-title"
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        lineHeight: 1.35,
+                        transition: 'color 0.2s ease',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {title}
+                    </Typography>
+                    {pubDate && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {formatDateParts(pubDate, isRtl).full}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )
+            })}
+          </Box>
+        </>
+      )}
 
+      <Box
+        component="a"
+        href={INSTAGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={(theme) => ({
+          mt: 4,
+          display: 'block',
+          textDecoration: 'none',
+          color: 'inherit',
+          p: 2.5,
+          borderRadius: 3,
+          bgcolor: theme.palette.primary.main,
+          boxShadow: `0 10px 24px ${alpha(theme.palette.primary.main, 0.28)}`,
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: `0 14px 28px ${alpha(theme.palette.primary.main, 0.35)}`,
+          },
+        })}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1, color: 'white' }}>
+          <Instagram size={22} />
+          <Typography fontWeight={800} sx={{ color: 'white' }}>
+            {t('news.ourInstagram', 'Our Instagram')}
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 1.75, lineHeight: 1.5 }}>
+          {t('news.instagramCta', 'Follow @faisalsaedanco for the latest updates and stories.')}
+        </Typography>
         <Box
-          component={Link}
-          to={`/news/${article.id}`}
           sx={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 0.75,
+            px: 1.75,
+            py: 0.75,
+            borderRadius: 2,
+            bgcolor: 'rgba(255,255,255,0.95)',
             color: 'primary.main',
-            fontWeight: 600,
-            textDecoration: 'none',
-            '&:hover': { gap: 1.25 },
-            transition: 'gap 0.2s ease',
+            fontWeight: 800,
+            fontSize: '0.8125rem',
           }}
         >
-          <span>{t('news.continueReading', 'Continue reading')}</span>
-          <ReadMoreArrow size={16} />
+          {t('news.instagramFollow', 'Follow us')}
         </Box>
-
-        <Divider sx={{ mt: 5 }} />
       </Box>
-    )
-  }
+    </Paper>
+  )
 
   return (
-    <Box sx={{ py: { xs: 10, md: 12 }, minHeight: '100vh', bgcolor: 'background.default' }} dir={isRtl ? 'rtl' : 'ltr'}>
-      <Container maxWidth="lg">
-        {/* Header */}
-        <Box sx={{ mb: 6, textAlign: align }}>
-          <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-            {t('news.blogTitle', 'Blog')}
-          </Typography>
-          <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-            {t('news.blogSubtitle', 'Insights, market updates, and stories from Faisal Bin Saedan.')}
-          </Typography>
-        </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: { xs: 6, md: 10 } }} dir={isRtl ? 'rtl' : 'ltr'}>
+      {/* Hero */}
+      <Box
+        sx={(theme) => ({
+          bgcolor: alpha(theme.palette.primary.main, 0.85),
+          backdropFilter: 'blur(20px)',
+          color: 'common.white',
+          py: { xs: 5, md: 7 },
+          textAlign: 'center',
+        })}
+      >
+        <Container maxWidth="lg">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                mb: 1.5,
+                opacity: 0.9,
+              }}
+            >
+              <Newspaper size={22} />
+              <Typography variant="overline" sx={{ letterSpacing: '0.2em', fontWeight: 600 }}>
+                {t('common.ourNews')}
+              </Typography>
+            </Box>
+            <Typography variant="h3" fontWeight={700} gutterBottom>
+              {t('news.blogTitle', 'Blog')}
+            </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'rgba(255,255,255,0.85)',
+                maxWidth: '40rem',
+                mx: 'auto',
+                fontWeight: 400,
+                fontSize: { xs: '1rem', md: '1.15rem' },
+                lineHeight: 1.6,
+              }}
+            >
+              {t('news.blogSubtitle', 'Insights, market updates, and stories from Faisal Bin Saedan.')}
+            </Typography>
+          </motion.div>
+        </Container>
+      </Box>
 
-        <Grid container spacing={6}>
-          {/* Main column — vertical list of posts */}
-          <Grid item xs={12} md={8} sx={{ order: { xs: 1, md: 2 } }}>
+      <Container maxWidth="xl" sx={{ pt: { xs: 4, md: 5 }, px: { xs: 2, md: 4 } }}>
+        <Grid container spacing={4} direction={isRtl ? 'row-reverse' : 'row'}>
+          {/* Main — post grid */}
+          <Grid size={{ xs: 12, md: 9 }}>
             {loading ? (
-              [1, 2, 3].map((i) => (
-                <Box key={i} sx={{ mb: 6 }}>
-                  <Skeleton variant="rectangular" height={340} sx={{ borderRadius: 2, mb: 2 }} />
-                  <Skeleton variant="text" height={20} width="40%" />
-                  <Skeleton variant="text" height={44} />
-                  <Skeleton variant="text" height={20} />
-                  <Skeleton variant="text" height={20} width="80%" />
-                </Box>
-              ))
+              <Grid container spacing={3}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <BlogPostCardSkeleton key={i} />
+                ))}
+              </Grid>
             ) : articles.length > 0 ? (
               <>
-                {articles.map(renderPostCard)}
+                <Grid container spacing={3}>
+                  {articles.map((article, index) => (
+                    <BlogPostCard key={article.id} article={article} isRtl={isRtl} index={index} />
+                  ))}
+                </Grid>
                 {totalPages > 1 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <Pagination
-                      count={totalPages}
-                      page={page}
-                      onChange={handlePageChange}
-                      color="primary"
-                      size="large"
-                    />
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+                    <Pagination count={totalPages} page={page} onChange={handlePageChange} color="primary" size="large" />
                   </Box>
                 )}
               </>
             ) : (
-              <Box sx={{ py: 8, textAlign: 'center' }}>
-                <Typography variant="h6" color="text.secondary">
+              <Box
+                sx={(theme) => ({
+                  textAlign: 'center',
+                  py: 10,
+                  px: 3,
+                  borderRadius: 3,
+                  bgcolor: alpha(theme.palette.background.paper, 0.6),
+                  border: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
+                })}
+              >
+                <Newspaper size={48} style={{ opacity: 0.35, marginBottom: 16 }} />
+                <Typography variant="h6" color="primary.main" gutterBottom>
                   {t('news.empty', 'No news articles found.')}
                 </Typography>
               </Box>
@@ -254,123 +558,8 @@ export default function News() {
           </Grid>
 
           {/* Sidebar */}
-          <Grid item xs={12} md={4} sx={{ order: { xs: 2, md: 1 } }}>
-            {/* Search */}
-            <TextField
-              fullWidth
-              size="small"
-              placeholder={t('news.searchKeywords', 'Search keywords')}
-              value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value)
-                setPage(1)
-              }}
-              sx={{ bgcolor: 'background.paper', mb: 4 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon size={16} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            {/* Categories */}
-            <Box sx={{ mb: 5 }}>
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: 'primary.main', textAlign: align }}
-              >
-                {t('news.categories', 'Categories')}
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                {['All', ...CATEGORIES].map((cat) => {
-                  const active = segment === cat
-                  return (
-                    <Box
-                      key={cat}
-                      onClick={() => {
-                        setSegment(cat)
-                        setPage(1)
-                      }}
-                      sx={{
-                        cursor: 'pointer',
-                        py: 1.1,
-                        borderBottom: 1,
-                        borderColor: 'divider',
-                        color: active ? 'primary.main' : 'text.primary',
-                        fontWeight: active ? 700 : 500,
-                        textAlign: align,
-                        transition: 'color 0.2s ease',
-                        '&:hover': { color: 'primary.main' },
-                      }}
-                    >
-                      {cat === 'All' ? t('news.allCategories', 'All Posts') : cat}
-                    </Box>
-                  )
-                })}
-              </Box>
-            </Box>
-
-            {/* Recent Posts */}
-            {recent.length > 0 && (
-              <Box>
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 700, mb: 2, pb: 1, borderBottom: 2, borderColor: 'primary.main', textAlign: align }}
-                >
-                  {t('news.recentPosts', 'Recent Posts')}
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {recent.map((article) => {
-                    const pubDate = article.publicationDate ? new Date(article.publicationDate) : null
-                    return (
-                      <Box
-                        key={article.id}
-                        component={Link}
-                        to={`/news/${article.id}`}
-                        sx={{
-                          display: 'flex',
-                          gap: 1.5,
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          '&:hover .recent-title': { color: 'primary.main' },
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={article.coverImageUrl || FALLBACK_IMAGE}
-                          alt={article.title}
-                          sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1, flexShrink: 0 }}
-                        />
-                        <Box sx={{ textAlign: align }}>
-                          <Typography
-                            className="recent-title"
-                            variant="body2"
-                            sx={{
-                              fontWeight: 600,
-                              lineHeight: 1.35,
-                              transition: 'color 0.2s ease',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {article.title}
-                          </Typography>
-                          {pubDate && (
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {formatDate(pubDate, isRtl)}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    )
-                  })}
-                </Box>
-              </Box>
-            )}
+          <Grid size={{ xs: 12, md: 3 }}>
+            {sidebar}
           </Grid>
         </Grid>
       </Container>

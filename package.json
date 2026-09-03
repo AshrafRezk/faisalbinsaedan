@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:netlify": "bash scripts/netlify-dev.sh --geo mock --no-open",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.2.2",
@@ -39,6 +41,7 @@
     "react-share": "^5.2.2",
     "react-toastify": "^11.0.5",
     "sharp": "^0.34.5",
+    "stylis-plugin-rtl": "^2.1.1",
     "vite-plugin-pwa": "^1.2.0",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"

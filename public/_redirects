@@ -1,0 +1,8 @@
+# Must come BEFORE the SPA catch-all. Rules in _redirects take priority over
+# netlify.toml redirects, so without this line /api/* never reaches functions
+# (GET → index.html; POST → Netlify 404).
+/api/*  /.netlify/functions/:splat  200
+
+# SPA fallback for production static hosting (Vite copies this into dist/).
+# Do not put this catch-all in netlify.toml — it hangs Netlify Dev on :8888.
+/*    /index.html   200

@@ -13,6 +13,8 @@ export const NAV_LABEL_KEYS = [
   'more',
   'call',
   'commercial',
+  'residentialProjects',
+  'residentialUnits',
 ] as const
 
 export type NavLabelKey = (typeof NAV_LABEL_KEYS)[number]
@@ -26,5 +28,6 @@ export interface SiteContent {
   latestReleases: SitePageCopy
   contact: SitePageCopy
   commercial: SitePageCopy
+  residentialProjects: SitePageCopy
   navigation: Record<NavLabelKey, LocalizedText>
 }

@@ -31,6 +31,7 @@ import type { ProjectModelFile } from '../lib/types'
 import InteractiveTopPlan from '../components/project/InteractiveTopPlan'
 import FinanceCalculatorModal, { SakaniMathIcon } from '../components/ui/FinanceCalculatorModal'
 import ProjectUnitsMap from '../components/map/ProjectUnitsMap'
+import CurrencyIcon from '../components/ui/CurrencyIcon'
 import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../lib/googleMapsUrls'
 import { projectHasMapData, resolveMapCentroid } from '../lib/projectMap'
 
@@ -144,6 +145,44 @@ export default function ProjectDetails() {
     const fallback = isAr ? project.description : project.descriptionAr
     return typeof fallback === 'string' ? fallback.trim() : ''
   }, [project, isAr])
+
+  const isCommercialProject = (project?.projectType || '').toLowerCase() === 'commercial'
+
+  const commercialFacts = useMemo(() => {
+    if (!project || !isCommercialProject) return []
+    const locale = isAr ? 'ar-SA' : 'en-US'
+    const areaUnit = t('project.areaUnit')
+    const formatArea = (n: number) =>
+      `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n)} ${areaUnit}`
+    const items: { label: string; value: string; withCurrency?: boolean }[] = []
+    if (typeof project.landArea === 'number' && project.landArea > 0) {
+      items.push({ label: t('project.landArea'), value: formatArea(project.landArea) })
+    }
+    if (typeof project.leasableArea === 'number' && project.leasableArea > 0) {
+      items.push({ label: t('project.leasableArea'), value: formatArea(project.leasableArea) })
+    }
+    if (typeof project.completionYear === 'number' && project.completionYear > 0) {
+      items.push({ label: t('project.completionYear'), value: String(Math.round(project.completionYear)) })
+    }
+    if (project.projectType?.trim()) {
+      items.push({ label: t('project.projectType'), value: project.projectType.trim() })
+    }
+    if (project.projectCode?.trim()) {
+      items.push({ label: t('unit.projectCode'), value: project.projectCode.trim() })
+    }
+    const address = (isAr ? project.projectAddressAr || project.projectAddress : project.projectAddress || project.projectAddressAr)?.trim()
+    if (address) {
+      items.push({ label: t('unit.projectAddress'), value: address })
+    }
+    if (typeof project.projectValue === 'number' && project.projectValue > 0) {
+      items.push({
+        label: t('project.projectValue'),
+        value: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(project.projectValue),
+        withCurrency: true,
+      })
+    }
+    return items
+  }, [project, isCommercialProject, isAr, t])
 
   const handleMapUnitSelect = (unitId: string) => {
     if (selectedMapUnitId === unitId) {
@@ -398,7 +437,45 @@ export default function ProjectDetails() {
 
       {/* Main Content */}
       <Container maxWidth="xl" sx={{ mt: -4, position: 'relative', zIndex: 10 }}>
-        
+        {commercialFacts.length > 0 && (
+          <MotionCard
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            sx={(theme) => ({
+              mb: 4,
+              borderRadius: 4,
+              backgroundColor: alpha(theme.palette.background.paper, 0.85),
+              backdropFilter: 'blur(16px)',
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.08)',
+            })}
+          >
+            <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                {t('project.facts')}
+              </Typography>
+              <Grid container spacing={2}>
+                {commercialFacts.map((fact) => (
+                  <Grid key={fact.label} size={{ xs: 12, sm: 6, md: 4 }}>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                      {fact.label}
+                    </Typography>
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight="bold"
+                      sx={{ display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      {fact.value}
+                      {fact.withCurrency ? <CurrencyIcon theme="light" className="mx-1" /> : null}
+                    </Typography>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </MotionCard>
+        )}
+
         {/* Availability Badge */}
         {typeof project.availablePhasesCount === 'number' && (
           <MotionBox initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} sx={{ mb: 4 }}>
@@ -761,6 +838,7 @@ export default function ProjectDetails() {
         projectName={title}
         fallbackProvinceRegion={project.provinceRegion}
         fallbackCity={project.city}
+        isCommercial={isCommercialProject}
       />
 
       <FinanceCalculatorModal

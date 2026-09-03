@@ -4,7 +4,7 @@ import { Bed, Move, Calendar } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Unit } from '../../lib/types'
 import SubsidyBadges from '../units/SubsidyBadges'
-import CurrencyIcon from '../ui/CurrencyIcon'
+import UnitPriceDisplay from '../units/UnitPriceDisplay'
 
 interface DashboardUnitCardProps {
   unit: Unit
@@ -87,10 +87,9 @@ export default function DashboardUnitCard({ unit }: DashboardUnitCardProps) {
       {/* Content Section */}
       <Box sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" fontWeight="bold" sx={{ color: 'primary.main', mb: 0.5, display: 'flex', alignItems: 'center' }}>
-            {unit.price.toLocaleString(isRtl ? 'ar-SA' : 'en-US')}
-            <CurrencyIcon theme="light" className="mx-1" />
-          </Typography>
+          <Box sx={{ mb: 0.5 }}>
+            <UnitPriceDisplay unit={unit} variant="compact" />
+          </Box>
           <Typography variant="body2" color="text.secondary">
             {isRtl ? unit.projectNameAr : unit.projectName} • {isRtl ? unit.phaseNameAr : unit.phaseName}
           </Typography>

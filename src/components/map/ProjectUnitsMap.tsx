@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { Box, Chip, Stack, Typography } from '@mui/material'
 import { MapPin } from 'lucide-react'
 import type { ProjectMapUnit } from '../../lib/types'
+import { getUnitPriceBreakdown } from '../../lib/unitPrice'
 import {
   geometryToLatLngRings,
   resolveMapCentroid,
@@ -194,11 +195,27 @@ export default function ProjectUnitsMap({
               <Box sx={{ minWidth: 120 }}>
                 <Typography variant="subtitle2" fontWeight={700}>{unit.name}</Typography>
                 <Typography variant="caption" display="block">{unit.status}</Typography>
-                {typeof unit.price === 'number' && (
-                  <Typography variant="caption" display="block">
-                    {unit.price.toLocaleString()} SAR
-                  </Typography>
-                )}
+                {typeof unit.price === 'number' && (() => {
+                  const { original, afterSubsidy, showBoth } = getUnitPriceBreakdown(unit)
+                  return (
+                    <>
+                      {showBoth ? (
+                        <>
+                          <Typography variant="caption" display="block" sx={{ textDecoration: 'line-through' }}>
+                            {original.toLocaleString()} SAR
+                          </Typography>
+                          <Typography variant="caption" display="block" fontWeight={700}>
+                            {afterSubsidy.toLocaleString()} SAR
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="caption" display="block">
+                          {original.toLocaleString()} SAR
+                        </Typography>
+                      )}
+                    </>
+                  )
+                })()}
               </Box>
             </Tooltip>
           </Polygon>

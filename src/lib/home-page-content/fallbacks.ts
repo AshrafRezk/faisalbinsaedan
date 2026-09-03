@@ -48,7 +48,8 @@ export const HOME_PAGE_FALLBACKS: HomePageContent = {
     cards: [
       {
         id: 'residential',
-        imageUrl: '/projects/malfa/hero.jpg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop',
         title: { en: 'Residential', ar: 'سكني' },
         description: {
           en: 'Faisal bin Saedan residential projects provide inspiring havens with sustainable environmental designs that meet all your basic and luxury needs, from internal protection and living services to stunning views, as they are designed to suit your distinctive lifestyle.',

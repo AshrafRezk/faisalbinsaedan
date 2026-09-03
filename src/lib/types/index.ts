@@ -36,6 +36,20 @@ export interface Project {
   modelFiles?: ProjectModelFile[];
   /** Curated nearby places from Salesforce Nearby_Location__c */
   nearbyLocations?: ProjectNearbyLocation[];
+  /** Salesforce Total_Area__c — land area in SQM */
+  landArea?: number;
+  /** Salesforce Leasable_Area__c — SQM */
+  leasableArea?: number;
+  /** Salesforce Completion_Year__c */
+  completionYear?: number;
+  /** Salesforce Project_Value__c */
+  projectValue?: number;
+  /** Salesforce Project_Code__c */
+  projectCode?: string;
+  /** Salesforce Project_Address__c */
+  projectAddress?: string;
+  /** Salesforce Project_Address_Ar__c */
+  projectAddressAr?: string;
   phases: Phase[];
 }
 
@@ -46,6 +60,9 @@ export interface ProjectMapUnit {
   status: string;
   statusGroup: 'available' | 'reserved' | 'sold' | 'blocked' | 'unknown';
   price?: number;
+  finalPrice?: number;
+  eligibleForSubsidies?: boolean;
+  subsidies?: string;
   bedrooms?: number;
   bathrooms?: number;
   bua?: number;
@@ -127,6 +144,14 @@ export interface Unit {
   floor?: number;
   finishing?: string;
   usageType?: string;
+  /** Salesforce Unit_Type__c — Villa | Townhouse | Apartment */
+  unitType?: string;
+  /** Salesforce Leasing_Status__c — commercial leasing status */
+  leasingStatus?: string;
+  /** Salesforce Expected_Rental_Value__c */
+  expectedRentalValue?: number;
+  /** Salesforce Rental_Unit_Type__c — Office | Retail | … */
+  rentalUnitType?: string;
   view?: string;
   hasGarden?: boolean;
   hasLand?: boolean;
@@ -151,6 +176,11 @@ export interface Unit {
   projectNameAr?: string;
   /** Derived from parent project Project_Type__c — e.g. Residential, Commercial */
   propertyType?: string;
+  /** Salesforce Project_Code__c */
+  projectCode?: string;
+  /** Salesforce Project_Address__c / Project_Address_Ar__c */
+  projectAddress?: string;
+  projectAddressAr?: string;
   /** From `Project__r` on unit query — used when lead form can’t match `getProjects()` */
   projectProvinceRegion?: string;
   projectCity?: string;
@@ -177,7 +207,7 @@ export interface Lead {
   city?: string;
   /** Unit_Type__c — e.g. "Rental" for commercial leads */
   unitType?: string;
-  profile?: "Investor" | "Customer" | "Supplier";
+  profile?: "Investor" | "Customer" | "Supplier" | "Individual";
   source: "PWA";
   interestedProjectId?: string;
   /** Lead.Interested_Projects__c — project display name (picklist value) */
@@ -196,6 +226,13 @@ export interface Lead {
   /** Lead.Rental_End_Date__c (YYYY-MM-DD) */
   rentalEndDate?: string;
   message?: string;
+  commercialRegistrationNumber?: string;
+  taxRegistrationNumber?: string;
+  nationalAddress?: string;
+  companyNumber?: string;
+  companyType?: 'Company' | 'Establishment' | '';
+  title?: string;
+  investmentType?: string;
   createdAt?: string;
 }
 
@@ -239,6 +276,8 @@ export interface UnitFilters {
   projectName?: string;
   /** Salesforce Model__c */
   model?: string;
+  /** Salesforce Unit_Type__c — Villa | Townhouse | Apartment */
+  unitType?: string;
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;
@@ -286,20 +325,26 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  status?: number;
 }
 
 export interface NewsArticle {
   id: string;
   title: string;
+  titleAr?: string;
   slug?: string;
   publicationDate?: string;
   segment?: string;
   coverImageUrl?: string;
   excerpt?: string;
+  excerptAr?: string;
   metaTitle?: string;
+  metaTitleAr?: string;
   metaDescription?: string;
+  metaDescriptionAr?: string;
   lastModified?: string;
   body?: string;
+  bodyAr?: string;
 }
 
 export interface NewsFilters {
